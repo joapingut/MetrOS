@@ -9,7 +9,7 @@ Basado en los tutoriales de:
   - http://wiki.osdev.org/
   - http://www.osdever.net
 
-Algunas partes del codgido están inspiradas en otros proyectos de los usuarios de dichas webs:
+Algunas partes del código están inspiradas en otros proyectos de los usuarios de dichas webs:
   + http://toaruos.org/ o https://github.com/klange/toaruos
   + https://github.com/16Bitt/virtix
   + https://github.com/PSanf2/POS_C9/
