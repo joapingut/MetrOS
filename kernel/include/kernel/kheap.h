@@ -2,8 +2,10 @@
 #define _KHEAP_H
 
 #include <kernel/system.h>
+#include <utils/orderedArray.h>
 
 #define KHEAP_START	0xD0000000
+#define KHEAP_FINISH	0xDFFFF000
 #define KHEAP_INITIAL_SIZE	0x100000
 #define HEAP_INDEX_SIZE	0x20000
 #define HEAP_MAGIC	0xABABBABA
@@ -29,6 +31,7 @@ typedef struct{
 	bool readonly;       // Should extra pages requested by us be mapped as read-only?
 } heap_t;
 
+extern heap_t *kheap;
 /**
   Create a new heap.
 **/

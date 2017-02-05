@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <utils/orderedArray.h>
 #include <kernel/kheap.h>
 #include <kernel/alloc.h>
 #include <kernel/paging.h>
@@ -33,7 +32,7 @@ static int32_t find_smallest_hole(uint32_t size, bool page_align, heap_t *heap){
 				break;
 		}else if (header->size >= size)
 			break;
-		iterator++;
+		iterator += 1;
 	}
 	// Why did the loop exit?
 	if (iterator == heap->index.size)
@@ -50,8 +49,7 @@ heap_t *create_heap(uint32_t start, uint32_t end_addr, uint32_t max, bool superv
 	
 	heap_t *heap = (heap_t *)kmalloc(sizeof(heap_t));
 	// Initialise the index.
-	heap->index = place_ordered_array( (uintptr_t)start, HEAP_INDEX_SIZE, &header_t_less_than);
-
+	heap->index = place_ordered_array((uintptr_t)start, HEAP_INDEX_SIZE, &header_t_less_than);
 	// Shift the start address forward to resemble where we can start putting data.
 	start += sizeof(uintptr_t)*HEAP_INDEX_SIZE;
 
@@ -144,7 +142,7 @@ void *alloc(uint32_t size, bool page_align, heap_t *heap){
 				value = tmp;
 				idx = iterator;
 			}
-			iterator++;
+			iterator += 1;
 		}
 
 		// If we didn't find ANY headers, we need to add one.
@@ -221,4 +219,75 @@ void *alloc(uint32_t size, bool page_align, heap_t *heap){
 	}
 	// ...And we're done!
 	return (void *)((uint32_t)block_header + sizeof(header_t));
+}
+
+void free(void *p, heap_t *heap) {
+	if (p == 0)
+		return;
+	header_t *header = (header_t*) ((uint32_t) p - sizeof(header_t));
+	footer_t *footer = (footer_t*) ((uint32_t) header + header->size - sizeof(footer_t));
+	// Sanity checks
+	ASSERT(header->magic == HEAP_MAGIC);
+	ASSERT(footer->magic == HEAP_MAGIC);
+	// Make us a hole.
+	header->is_hole = 1;
+	// Do we want to add this header into the 'free holes' index?
+	char do_add = 1;
+	// Unify left
+	// If the thing immediately to the left of us is a footer...
+	footer_t *test_footer = (footer_t*) ((uint32_t) header - sizeof(footer_t));
+	if (test_footer->magic == HEAP_MAGIC && test_footer->header->is_hole == 1) {
+		uint32_t cache_size = header->size; // Cache our current size.
+		header = test_footer->header;    // Rewrite our header with the new one.
+		footer->header = header; // Rewrite our footer to point to the new header.
+		header->size += cache_size;       // Change the size.
+		do_add = 0; // Since this header is already in the index, we don't want to add it again.
+	}
+	// Unify right
+	// If the thing immediately to the right of us is a header...
+	header_t *test_header = (header_t*) ((uint32_t) footer + sizeof(footer_t));
+	if (test_header->magic == HEAP_MAGIC && test_header->is_hole) {
+		header->size += test_header->size; // Increase our size.
+		test_footer = (footer_t*) ((uint32_t) test_header + test_header->size
+				- sizeof(footer_t)); // Rewrite it's footer to point to our header.
+		footer = test_footer;
+		// Find and remove this header from the index.
+		uint32_t iterator = 0;
+		while ((iterator < heap->index.size)
+				&& (get_ordered_array(iterator, &heap->index)
+						!= (void*) test_header))
+			iterator += 1;
+		// Make sure we actually found the item.
+		ASSERT(iterator < heap->index.size);
+		// Remove it.
+		remove_ordered_array(iterator, &heap->index);
+	}
+
+	// If the footer location is the end address, we can contract.
+	if ((uint32_t) footer + sizeof(footer_t) == heap->end_address) {
+		uint32_t old_length = heap->end_address - heap->start_address;
+		uint32_t new_length = contract((uint32_t) header - heap->start_address,
+				heap);
+		// Check how big we will be after resizing.
+		if (header->size - (old_length - new_length) > 0) {
+			// We will still exist, so resize us.
+			header->size -= old_length - new_length;
+			footer = (footer_t*) ((uint32_t) header + header->size
+					- sizeof(footer_t));
+			footer->magic = HEAP_MAGIC;
+			footer->header = header;
+		} else {
+			// We will no longer exist :(. Remove us from the index.
+			uint32_t iterator = 0;
+			while ((iterator < heap->index.size)
+					&& (get_ordered_array(iterator, &heap->index)
+							!= (void*) test_header))
+				iterator += 1;
+			// If we didn't find ourselves, we have nothing to remove.
+			if (iterator < heap->index.size)
+				remove_ordered_array(iterator, &heap->index);
+		}
+	}
+	if (do_add == 1)
+	  insert_ordered_array((void*) header, &heap->index);
 }

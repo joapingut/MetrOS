@@ -1,0 +1,11 @@
+.cproject
+.project
+build.sh
+clean.sh
+config.sh
+default-host.sh
+headers.sh
+iso.sh
+qemu.sh
+target-triplet-to-arch.sh
+.settings

@@ -67,8 +67,10 @@ void kernel_main(void){
 	a = 20 / 1;
 	printf("Resultado: %d!\n", a);
 	ticks();
+
 	uint32_t dirr = kmalloc(sizeof(uint32_t));
 	printf("Asigned: 0x%x\n", dirr);
+	while(1);
 	uint32_t *ptr = dirr;
 	printf("PAGE A %x\n", ptr);
 	uint32_t do_page_fault = *ptr;

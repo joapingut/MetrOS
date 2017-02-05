@@ -7,6 +7,7 @@
 #include <kernel/alloc.h>
 #include <kernel/isrs.h>
 #include <kernel/idt.h>
+#include <kernel/kheap.h>
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir);
 uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory);
@@ -20,6 +21,7 @@ uint32_t next_freeAddress; // First 4MB (first page) reserved
 uint32_t next_virtualFreeAddress;
 static uint32_t max_num_frames; //Max number of frames for installed memory
 static uint32_t *frames_Array; //Pointer to array with the frames status (0 FREE, 1 USED)
+heap_t *kheap = 0; //Pointer to the heap
 
 void paging_install(multiboot_info_t *mbi){
 	/***First create the bitmap***/
@@ -53,10 +55,18 @@ void paging_install(multiboot_info_t *mbi){
 		page_t *pg = get_page(i, 1, kernel_directory);
 		alloc_frame_int(pg, true, true, true, true, true, i - KERNEL_VIRTUAL_BASE);
 	}
+	for (uint32_t i = KHEAP_START; i < KHEAP_START + KHEAP_INITIAL_SIZE; i += PAGE_TAM){
+		page_t *pg = get_page(i, 1, kernel_directory);
+		alloc_frame_int(pg, true, true, true, true, true, i - KERNEL_VIRTUAL_BASE);
+	}
 	//Registramos el handler para la paginacion
 	register_isrs_handler(14, paging_handler);
 	//Cambiamos al modo 4KB con el nuevo directorio
 	switch_4kb_pagination(phy);
+	//Creamos el area que hará de heap
+	next_virtualFreeAddress = KHEAP_START;
+	kheap = create_heap(KHEAP_START, KHEAP_START + KHEAP_INITIAL_SIZE, KHEAP_FINISH, 0, 0);
+	printf("Kheap installed at 0x%x\n", kheap);
 }
 
 void paging_handler(regs *r){

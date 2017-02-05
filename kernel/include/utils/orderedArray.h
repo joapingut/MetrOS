@@ -1,5 +1,5 @@
-#ifndef _KEYBOARD_ARRAY_HPP
-#define _ORDERED_ARRAY_HPP
+#ifndef _KEYBOARD_ARRAY_H
+#define _ORDERED_ARRAY_H
 
 #include <kernel/system.h>
 
