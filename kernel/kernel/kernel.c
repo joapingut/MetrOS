@@ -10,11 +10,14 @@
 #include <kernel/isrs.h>
 #include <kernel/irq.h>
 #include <kernel/paging.h>
+#include <kernel/vmm.h>
 #include <kernel/timers.h>
 #include <kernel/keyboard.h>
-#include <kernel/alloc.h>
+#include <filesystem/initrd.h>
+#include <liballoc/liballoc.h>
 
 extern uint32_t end;
+fs_node_t *initrdNode;
 uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi);
 
 void kernel_early(multiboot_info_t* mbi, unsigned int magic){
@@ -45,6 +48,7 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	printf("Installed IRQ\n");
 	//printf("Installing PAGING\n");
 	paging_install(mbi);
+	vmm_install();
 	printf("Installed PAGING\n");
 	//printf("Installing timers\n");
 	timer_install();
@@ -52,6 +56,8 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	//printf("Installing keyboard\n");
 	keyboard_install();
 	printf("Installed keyboard\n");
+	initrdNode = initialise_initrd();
+	printf("Installed initrd\n");
 }
 
 void kernel_main(void){
@@ -70,17 +76,52 @@ void kernel_main(void){
 
 	uint32_t dirr = kmalloc(sizeof(uint32_t));
 	printf("Asigned: 0x%x\n", dirr);
-	while(1);
+	//while(1);
 	uint32_t *ptr = dirr;
 	printf("PAGE A %x\n", ptr);
 	uint32_t do_page_fault = *ptr;
 	printf("PAGE F %d", do_page_fault);
-	ptr = (uintptr_t)0xA0100032;
+	kfree(ptr);
+	ptr = kmalloc(sizeof(uint32_t));
+	printf("PAGE A %x\n", ptr);
+	//ptr = (uintptr_t)0xA0100032;
 	printf("\nPAGE B %x\n", ptr);
 	*ptr = 20;
 	do_page_fault = *ptr;	
 	printf("\nPAGE F %d\n", do_page_fault);
+
+	uint32_t *ptra = kmalloc(sizeof(uint32_t));
+	uint32_t *ptrb = kmalloc(sizeof(uint32_t));
+	printf("PAGE A %x\n", ptra);
+	printf("PAGE B %x\n", ptrb);
+	kfree(ptra);
+	uint32_t *ptrc = kmalloc(sizeof(uint32_t));
+	printf("PAGE B %x\n", ptrb);
+	printf("PAGE C %x\n", ptrc);
+	testinitrdFilesystem();
 	printf("\n***END**");
 	while(1);
 }
 
+void testinitrdFilesystem(){
+	int i = 0;
+	struct dirent *node = 0;
+	while ( (node = readdir_fs(initrdNode, i)) != 0){
+		printf("Found file ");
+		printf(node->name);
+		fs_node_t *fsnode = finddir_fs(initrdNode, node->name);
+
+		if ((fsnode->flags&0x7) == FS_DIRECTORY)
+			printf("\n\t(directory)\n");
+		else{
+			printf("\n\t contents: \"");
+			char buf[256];
+			uint32_t sz = read_fs(fsnode, 0, 256, buf);
+			int j;
+			for (j = 0; j < sz; j++)
+				printf("%c", buf[j]);
+			printf("\"\n");
+		}
+		i++;
+	}
+}

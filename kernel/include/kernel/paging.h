@@ -47,12 +47,11 @@ extern uint32_t next_freeAddress;
 void paging_install(multiboot_info_t *mbi);
 void paging_handler(regs *r);
 page_t *get_page(uint32_t address, int make, page_directory_t *dir);
+page_t *get_page_default(uint32_t address, int make);
 static void set_frame(uint32_t frame_addr);
 static void clear_frame(uint32_t frame_addr);
 static uint32_t test_frame(uint32_t frame_addr);
 static uint32_t first_frame();
-
-
 
 #endif
 

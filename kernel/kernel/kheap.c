@@ -47,7 +47,7 @@ heap_t *create_heap(uint32_t start, uint32_t end_addr, uint32_t max, bool superv
 	ASSERT((start % PAGE_TAM) == 0);
 	ASSERT((end_addr % PAGE_TAM) == 0);
 	
-	heap_t *heap = (heap_t *)kmalloc(sizeof(heap_t));
+	heap_t *heap = (heap_t *)kmalloc_dumb(sizeof(heap_t));
 	// Initialise the index.
 	heap->index = place_ordered_array((uintptr_t)start, HEAP_INDEX_SIZE, &header_t_less_than);
 	// Shift the start address forward to resemble where we can start putting data.

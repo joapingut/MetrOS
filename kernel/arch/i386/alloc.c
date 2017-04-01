@@ -40,7 +40,7 @@ uint32_t kmalloc_int(uint32_t sz, int align, uint32_t *phy){
 	}
 }
 
-uint32_t kmalloc(uint32_t sz){
+uint32_t kmalloc_dumb(uint32_t sz){
 	return kmalloc_int(sz, 0, 0);
 }
 
@@ -56,6 +56,6 @@ uint32_t kmalloc_ap(uint32_t sz, uint32_t *phy){
 	return kmalloc_int(sz, 1, phy);
 }
 
-void kfree(void *p){
+void kfree_dumb(void *p){
     free(p, kheap);
 }
