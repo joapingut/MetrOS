@@ -9,7 +9,7 @@ typedef struct {
 	unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
 	unsigned int int_no, err_code;    /* our 'push byte #' and ecodes do this */
 	unsigned int eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */ 
-} __attribute__((packed)) regs;
+} __attribute__((packed)) irt_regs;
 
 #define PANIC(msg) panic(msg, __FILE__, __LINE__);
 #define ASSERT(b) ((b) ? (void)0 : panic_assert(__FILE__, __LINE__, #b))

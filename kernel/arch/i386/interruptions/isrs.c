@@ -16,7 +16,7 @@ void register_isrs_handler(uint32_t isrs, isrs_function handler){
 	}
 }
 
-void fault_handler(regs *r){
+void fault_handler(irt_regs *r){
 	isrs_function handler = isrs_routines[r->int_no];
 	if(handler != 0){
 		handler(r);

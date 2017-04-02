@@ -13,7 +13,7 @@ static void *irq_routines[16] = {
 };
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(int irq, void (*handler)(regs *r)){
+void irq_install_handler(int irq, void (*handler)(irt_regs *r)){
 	SYNC_CLI();
 	irq_routines[irq] = handler;
 	SYNC_STI();
@@ -63,11 +63,11 @@ void irq_install(){
 	idt_set_gate(47, (unsigned)_irq15, 0x08, 0x8E);
 }
 
-void irq_handler(regs *r){
+void irq_handler(irt_regs *r){
 	//printf("IRQ: %d", r->int_no);
 	SYNC_CLI();
 	/* This is a blank function pointer */
-	void (*handler)(regs *r);
+	void (*handler)(irt_regs *r);
 
 	/* Find out if we have a custom handler to run for this
 	*  IRQ, and then finally, run it */

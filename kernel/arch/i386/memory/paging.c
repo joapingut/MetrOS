@@ -73,7 +73,7 @@ void paging_install(multiboot_info_t *mbi){
 	switch_4kb_pagination(phy);
 }
 
-void paging_handler(regs *r){
+void paging_handler(irt_regs *r){
 	//The address with the error is in cr2
 	uint32_t faulting_address;
 	asm volatile("mov %%cr2, %0" : "=r" (faulting_address));

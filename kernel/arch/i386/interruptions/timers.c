@@ -17,7 +17,7 @@ void timer_phase(int hz) {
 	outportb(PIT_A, (divisor >> 8) & PIT_MASK);
 }
 
-void timer_handler(regs *r){
+void timer_handler(irt_regs *r){
     /* Increment our 'tick count' */
     timer_ticks++;
 
