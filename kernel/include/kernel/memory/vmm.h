@@ -2,7 +2,7 @@
 #define KERNEL_INCLUDE_KERNEL_VMM_H_
 
 #include <kernel/system.h>
-#include <kernel/paging.h>
+#include <kernel/memory/paging.h>
 
 #define ALLOC_VMM_START	0xD0000000
 #define ALLOC_VMM_FINISH 0xDFFFF000

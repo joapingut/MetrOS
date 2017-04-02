@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/isrs.h>
-#include <kernel/paging.h>
-#include <kernel/tty.h>
+#include <kernel/interruptions/isrs.h>
+#include <kernel/memory/paging.h>
+#include <kernel/screen/tty.h>
 
 static isrs_pointers_t isrs;
 static isrs_function isrs_routines[256] = {0};

@@ -11,9 +11,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/vmm.h>
-#include <kernel/paging.h>
-#include <kernel/alloc.h>
+#include <kernel/memory/vmm.h>
+#include <kernel/memory/paging.h>
+#include <kernel/memory/alloc.h>
 
 static uint32_t *pages_Array; //Pointer to array with the heap pages status (0 FREE, 1 USED)
 

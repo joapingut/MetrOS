@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/vga.h>
-#include <kernel/io.h>
+#include <kernel/screen/vga.h>
+#include <kernel/io/io.h>
 
 size_t terminal_row;
 size_t terminal_column;

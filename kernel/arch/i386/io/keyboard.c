@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/keyboard.h>
-#include <kernel/irq.h>
-#include <kernel/io.h>
+#include <kernel/io/keyboard.h>
+#include <kernel/interruptions/irq.h>
+#include <kernel/io/io.h>
 
 static int _kkybrd_scancode_std [] = {
 

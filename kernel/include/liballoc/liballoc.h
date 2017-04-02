@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#include <kernel/vmm.h>
+#include <kernel/memory/vmm.h>
 
 /** This function is supposed to lock the memory data structures. It
  * could be as simple as disabling interrupts or acquiring a spinlock.

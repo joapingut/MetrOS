@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/irq.h>
-#include <kernel/idt.h>
-#include <kernel/io.h>
+#include <kernel/interruptions/irq.h>
+#include <kernel/interruptions/idt.h>
+#include <kernel/io/io.h>
 
 static void *irq_routines[16] = {
     0, 0, 0, 0, 0, 0, 0, 0,

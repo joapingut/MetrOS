@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/idt.h>
+#include <kernel/interruptions/idt.h>
 
 #define ENTRY(X) (idt.entries[(X)])
 

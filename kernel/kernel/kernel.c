@@ -3,16 +3,16 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <kernel/tty.h>
+#include <kernel/screen/tty.h>
 #include <kernel/multiboot.h>
-#include <kernel/gdt.h>
-#include <kernel/idt.h>
-#include <kernel/isrs.h>
-#include <kernel/irq.h>
-#include <kernel/paging.h>
-#include <kernel/vmm.h>
-#include <kernel/timers.h>
-#include <kernel/keyboard.h>
+#include <kernel/memory/gdt.h>
+#include <kernel/interruptions/idt.h>
+#include <kernel/interruptions/isrs.h>
+#include <kernel/interruptions/irq.h>
+#include <kernel/memory/paging.h>
+#include <kernel/memory/vmm.h>
+#include <kernel/interruptions/timers.h>
+#include <kernel/io/keyboard.h>
 #include <filesystem/initrd.h>
 #include <liballoc/liballoc.h>
 

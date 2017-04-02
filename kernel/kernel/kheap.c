@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/kheap.h>
-#include <kernel/alloc.h>
-#include <kernel/paging.h>
+#include <kernel/memory/kheap.h>
+#include <kernel/memory/alloc.h>
+#include <kernel/memory/paging.h>
 
 extern page_directory_t *kernel_directory;
 

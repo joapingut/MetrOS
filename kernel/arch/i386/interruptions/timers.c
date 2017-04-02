@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/timers.h>
-#include <kernel/irq.h>
-#include <kernel/io.h>
+#include <kernel/interruptions/timers.h>
+#include <kernel/interruptions/irq.h>
+#include <kernel/io/io.h>
 
 long timer_ticks = 0;
 int timer_seconds = 0;

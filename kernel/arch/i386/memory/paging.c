@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/paging.h>
-#include <kernel/alloc.h>
-#include <kernel/isrs.h>
-#include <kernel/idt.h>
-#include <kernel/kheap.h>
+#include <kernel/memory/paging.h>
+#include <kernel/memory/alloc.h>
+#include <kernel/interruptions/isrs.h>
+#include <kernel/interruptions/idt.h>
+#include <kernel/memory/kheap.h>
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir);
 uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory);
@@ -325,5 +325,6 @@ static uint32_t first_frame(){
 			}
 		}
 	}
+	return NULL;
 }
 

@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/paging.h>
-#include <kernel/alloc.h>
-#include <kernel/kheap.h>
+#include <kernel/memory/paging.h>
+#include <kernel/memory/alloc.h>
+#include <kernel/memory/kheap.h>
 
 extern uint32_t next_freeAddress;
 extern uint32_t next_virtualFreeAddress;

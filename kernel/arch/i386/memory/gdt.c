@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <kernel/tss.h>
-#include <kernel/gdt.h>
+#include <kernel/tasking/tss.h>
+#include <kernel/memory/gdt.h>
 
 #define ENTRY(X) (gdt.entries[(X)])
 
