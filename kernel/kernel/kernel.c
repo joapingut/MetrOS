@@ -15,6 +15,7 @@
 #include <kernel/io/keyboard.h>
 #include <filesystem/initrd.h>
 #include <liballoc/liballoc.h>
+#include <kernel/tasking/tasking.h>
 
 extern uint32_t end;
 fs_node_t *initrdNode;
@@ -58,6 +59,13 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	printf("Installed keyboard\n");
 	initrdNode = initialise_initrd();
 	printf("Installed initrd\n");
+	tasking_install();
+	printf("Installed tasking\n");
+}
+
+static void otherMain() {
+	printf("\nHello multitasking world!"); // Not implemented here...
+	STOP()
 }
 
 void kernel_main(void){
@@ -99,6 +107,8 @@ void kernel_main(void){
 	printf("PAGE B %x\n", ptrb);
 	printf("PAGE C %x\n", ptrc);
 	testinitrdFilesystem();
+	process_t *nprocess = kmalloc(sizeof(process_t));
+	createTask(nprocess, otherMain, kernelProcess.cr3);
 	printf("\n***END**");
 	while(1);
 }

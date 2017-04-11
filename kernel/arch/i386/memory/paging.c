@@ -16,7 +16,6 @@ void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_ac
 void switch_4kb_pagination(uint32_t phy);
 void refresh_page(uint32_t address);
 
-page_directory_t *kernel_directory; //The page directory created on boot.S for kernel
 page_directory_t *current_page_directory;
 uint32_t next_freeAddress; // First 4MB (first page) reserved
 uint32_t next_virtualFreeAddress;
@@ -109,9 +108,6 @@ page_t *get_page(uint32_t address, int make, page_directory_t *dir){
 	// Turn the address into an index.
 	uint32_t table_idx = address / PAGE_TAM_4MB;
 	uint32_t page_idx = (address / PAGE_TAM) % 1024;
-	if(address == 0xD7FE0008){
-		STOP()
-	}
 	if(*(uint32_t *)(&dir->tables[table_idx])!=0){// If this table is already assigned
 		//printf("Address %x Already: 0x%x ",address,  dir->physical_tables[table_idx]);
 		return &(dir->tables[table_idx]->pages[page_idx]);
@@ -132,8 +128,9 @@ page_t *get_page_default(uint32_t address, int make){
 }
 
 void switch_page_directory(page_directory_t *dir){
+	page_directory_t *work = current_page_directory;
 	current_page_directory = dir;
-	asm volatile("mov %0, %%cr3":: "r"(to_physical_addr(&dir, dir)): "%eax");
+	asm volatile("mov %0, %%cr3":: "r"(to_physical_addr((uint32_t)dir, work)): "%eax");
 }
 
 void switch_4kb_pagination(uint32_t phy){
@@ -154,13 +151,10 @@ void refresh_page(uint32_t address){
 }
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir){
-	uint32_t table_idx = virtual / PAGE_TAM_4MB;
+	uint32_t table_idxa = virtual / PAGE_TAM_4MB;
 	uint32_t page_idx = (virtual / PAGE_TAM) % 1024;
-	uint32_t *tableDEntry = 0xFFFFF000 + (table_idx * sizeof(uint32_t));
-	//check if table really exist
-	uint32_t *table =  0xFFC00000 + (table_idx * PAGE_TAM);
-	//check if page exist
-	return (uintptr_t)((table[page_idx] & ~PAGE_MASC) + (virtual & PAGE_MASC));
+	uint32_t phy_addr = (uint32_t)((dir->tables[table_idxa]->pages[page_idx].frame) << 12);
+	return (uintptr_t) phy_addr;
 }
 
 uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory){

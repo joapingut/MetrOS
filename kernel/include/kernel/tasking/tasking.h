@@ -10,23 +10,24 @@
 
 #include <stdbool.h>
 #include <kernel/system.h>
+#include <kernel/memory/paging.h>
 
-typedef struct {
-	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	uint32_t  eip, eflags, cr3;
-} __attribute__((packed)) registers;
+typedef enum {STARTING, RUNNING, WAITING, STOPED} process_status;
 
 typedef struct process_struct{
-	registers regs;
+	irt_regs regs;
 	uint32_t esp0;
+	page_directory_t *cr3;
 	uint32_t identifier;
+	process_status status;
 	struct process_struct* previous;
 	struct process_struct* next;
 } process_t;
 
+process_t kernelProcess;
+
 void tasking_install();
-bool createTask(process_t *task, void (*main)(), uint32_t flags, page_directory_t *pagedir);
-extern volatile void switch_task(registers *from, registers *to);
-extern registers* saveRegs();
+bool createTask(process_t *task, void (*main)(), page_directory_t *pagedir);
+volatile void switch_task(irt_regs *regs);
 
 #endif /* KERNEL_INCLUDE_KERNEL_TASKING_TASKING_H_ */

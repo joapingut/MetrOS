@@ -43,6 +43,7 @@ typedef struct {
 extern uint32_t *__KERNEL_END;
 extern uint32_t *BootPageDirectory;
 extern uint32_t next_freeAddress;
+page_directory_t *kernel_directory;
 
 void paging_install(multiboot_info_t *mbi);
 void paging_handler(irt_regs *r);
