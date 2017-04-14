@@ -7,7 +7,6 @@
 #include <kernel/memory/alloc.h>
 #include <kernel/interruptions/isrs.h>
 #include <kernel/interruptions/idt.h>
-#include <kernel/memory/kheap.h>
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir);
 uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory);
@@ -22,7 +21,6 @@ uint32_t next_virtualFreeAddress;
 uint32_t modules_firstAddress;
 static uint32_t max_num_frames; //Max number of frames for installed memory
 static uint32_t *frames_Array; //Pointer to array with the frames status (0 FREE, 1 USED)
-heap_t *kheap = 0; //Pointer to the heap
 
 extern uint8_t *initrd_addr;
 
@@ -83,7 +81,7 @@ void paging_handler(irt_regs *r){
 	int reserved = r->err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
 	int id = r->err_code & 0x10;		// Caused by an instruction fetch?
 	printf("\nFaulting: %x\n", faulting_address);
-	if(present){
+	if(present && faulting_address != 0x37e0){
 		//Obtenemos la pagina que falta o la creamos si no existe
 		page_t *ptm = get_page(faulting_address, 1, current_page_directory);
 		alloc_frame(ptm, true, true);
@@ -94,13 +92,16 @@ void paging_handler(irt_regs *r){
 			while(1);
 		}*/
 	}else{
-		printf("P: %d; RW: %d; US: %d; R: %d; ID: %d;\n", present, rw, us, reserved, id);
 		uint32_t fcr3, fcr4, fcr0;
 		asm volatile("mov %%cr3, %0" : "=r" (fcr3));
 		asm volatile("mov %%cr4, %0" : "=r" (fcr4));
 		asm volatile("mov %%cr0, %0" : "=r" (fcr0));
-		printf("CR3: %x; CR4: %x; CR0: %x\n", fcr3, fcr4, fcr0);
-		panic_exception("Paging handler", 0x22);
+		//panic_exception("Paging handler", 0x22);
+		printf("\nFaulting: %x", faulting_address);
+		printf("\nCR3: %x; CR4: %x; CR0: %x", fcr3, fcr4, fcr0);
+		printf("\nP: %d; RW: %d; US: %d; R: %d; ID: %d;\n", present, rw, us, reserved, id);
+		printregs(r);
+		fault_halt();
 	}
 }
 
@@ -257,6 +258,7 @@ void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_ac
 	page->ps = 0; //We are using 4KB pages
 	page->present = 1; // Mark it as present.
 	page->rw = (is_writeable == true)?1:0; // Should the page be writeable?
+	is_kernel = false;
 	page->user = (is_kernel == true)?0:1; // Should the page be user-mode?
 	page->accessed = (is_accessed == true)?1:0;
 	page->dirty = (is_dirty == true)?1:0;
@@ -319,6 +321,14 @@ static uint32_t first_frame(){
 			}
 		}
 	}
+	return NULL;
+}
+
+static page_directory_t * create_page_directory(){
+	return NULL;
+}
+
+static page_directory_t * copy_page_directory(page_directory_t *src){
 	return NULL;
 }
 

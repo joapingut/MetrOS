@@ -11,7 +11,7 @@
 #define PAGE_TAM_4MB 0x400000
 #define PAGE_MASC (PAGE_TAM - 1)
 #define PAGE_MASC_4MB (PAGE_TAM_4MB - 1)
-#define PAGE_DEFAULT_VALUE 0x00000003
+#define PAGE_DEFAULT_VALUE 0x00000007 //todo change to 3 later
 #define END_RESERVED_MEMORY 0x400000
 
 #define INDEX_FROM_BIT(a) (a/(8*4))
@@ -53,6 +53,9 @@ static void set_frame(uint32_t frame_addr);
 static void clear_frame(uint32_t frame_addr);
 static uint32_t test_frame(uint32_t frame_addr);
 static uint32_t first_frame();
+
+static page_directory_t * create_page_directory();
+static page_directory_t * copy_page_directory(page_directory_t *src);
 
 #endif
 

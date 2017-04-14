@@ -64,8 +64,6 @@ void irq_install(){
 }
 
 void irq_handler(irt_regs *r){
-	//printf("IRQ: %d", r->int_no);
-	SYNC_CLI();
 	/* This is a blank function pointer */
 	void (*handler)(irt_regs *r);
 
@@ -77,7 +75,6 @@ void irq_handler(irt_regs *r){
 	}
 
 	irq_ack(r->int_no - 32);
-	SYNC_STI();
 }
 
 void irq_ack(size_t irq_no) {

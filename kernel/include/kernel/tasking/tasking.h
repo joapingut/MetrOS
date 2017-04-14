@@ -22,12 +22,13 @@ typedef struct process_struct{
 	process_status status;
 	struct process_struct* previous;
 	struct process_struct* next;
-} process_t;
+}__attribute__((packed)) process_t;
 
 process_t kernelProcess;
 
 void tasking_install();
 bool createTask(process_t *task, void (*main)(), page_directory_t *pagedir);
 volatile void switch_task(irt_regs *regs);
+extern void _switchKernelTask();
 
 #endif /* KERNEL_INCLUDE_KERNEL_TASKING_TASKING_H_ */

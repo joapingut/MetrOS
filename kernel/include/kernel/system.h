@@ -17,6 +17,7 @@ typedef struct {
 
 extern void panic(const char *message, const char *file, uint32_t line);
 extern void panic_assert(const char *file, uint32_t line, const char *desc);
+extern void printregs(irt_regs *regs);
 uint8_t *initrd_addr;
 
 #endif

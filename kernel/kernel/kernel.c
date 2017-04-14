@@ -64,7 +64,26 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 }
 
 static void otherMain() {
-	printf("\nHello multitasking world!"); // Not implemented here...
+	printf("\nHello multitasking world! 1");
+	while(1){
+		printf("\n SECOND");
+	}
+	STOP()
+}
+
+static void otherMain3() {
+	printf("\nHello multitasking world! 2");
+	while(1){
+		printf("\n THREE");
+	}
+	STOP()
+}
+
+static void otherMain4() {
+	printf("\nHello multitasking world! 3");
+	while(1){
+		printf("\n FOUR");
+	}
 	STOP()
 }
 
@@ -109,7 +128,14 @@ void kernel_main(void){
 	testinitrdFilesystem();
 	process_t *nprocess = kmalloc(sizeof(process_t));
 	createTask(nprocess, otherMain, kernelProcess.cr3);
+	process_t *nprocess2 = kmalloc(sizeof(process_t));
+	createTask(nprocess2, otherMain3, kernelProcess.cr3);
+	process_t *nprocess3 = kmalloc(sizeof(process_t));
+	createTask(nprocess3, otherMain4, kernelProcess.cr3);
 	printf("\n***END**");
+	while(1){
+		printf("\n first");
+	}
 	while(1);
 }
 

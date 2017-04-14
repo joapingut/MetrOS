@@ -21,8 +21,7 @@ void fault_handler(irt_regs *r){
 		handler(r);
 	}else{
 		panic_exception(exception_messages[r->int_no], exception_messages[r->err_code]);
-		printf("\n\nEIP: %x ESP: %x ERR: %x IN: %x ", r->eip, r->esp, r->err_code, r->int_no);
-		printf("\nCS: %x SS: %x USP: %x", r->cs, r->ss, r->useresp);
+		printregs(r);
 		fault_halt();
 	}
 }
