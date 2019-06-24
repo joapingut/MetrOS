@@ -251,6 +251,14 @@
         push $31
         jmp isr_common
 
+.global _syscallCommon
+.type _syscallCommon, @function
+	_syscallCommon:
+	cli
+        push $0
+        push $0x80
+        jmp isr_common
+
 .extern fault_handler
 .type fault_handler, @function
 

@@ -16,6 +16,7 @@
 #include <filesystem/initrd.h>
 #include <liballoc/liballoc.h>
 #include <kernel/tasking/tasking.h>
+#include <kernel/syscalls/syscalls.h>
 
 extern uint32_t end;
 fs_node_t *initrdNode;
@@ -57,10 +58,12 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	//printf("Installing keyboard\n");
 	keyboard_install();
 	printf("Installed keyboard\n");
-	initrdNode = initialise_initrd();
+	//initrdNode = initialise_initrd();
 	printf("Installed initrd\n");
 	tasking_install();
 	printf("Installed tasking\n");
+	syscalls_install();
+	printf("Installed syscalls\n");
 }
 
 static void otherMain() {
@@ -75,6 +78,9 @@ static void otherMain3() {
 	printf("\nHello multitasking world! 2");
 	while(1){
 		printf("\n THREE");
+		__asm__ (
+				"int $0x80;"
+		);
 	}
 	STOP()
 }
@@ -125,13 +131,30 @@ void kernel_main(void){
 	uint32_t *ptrc = kmalloc(sizeof(uint32_t));
 	printf("PAGE B %x\n", ptrb);
 	printf("PAGE C %x\n", ptrc);
-	testinitrdFilesystem();
+	if(initrdNode != NULL){
+		testinitrdFilesystem();
+		fs_node_t *fsnode = finddir_fs(initrdNode, "dumb.o");
+		if(fsnode != NULL){
+			printf("\nNode Found! Executing..");
+			/*process_t *elfProcess = kmalloc(sizeof(process_t));
+			page_directory_t *newDirectory = create_page_directory();
+			createTask(elfProcess, otherMain4, NULL, 0, newDirectory);
+			int exec_elf(fsnode, process_t *elf_process);*/
+			printf(" Fsnode %s", fsnode->name);
+			executeFile(fsnode);
+			STOP()
+		}
+	}
+	switchSchedulerState();
+	printf("\nEND");
+	STOP();
 	process_t *nprocess = kmalloc(sizeof(process_t));
-	createTask(nprocess, otherMain, kernelProcess.cr3);
+	createTask(nprocess, otherMain, NULL, 0, kernelProcess.cr3);
 	process_t *nprocess2 = kmalloc(sizeof(process_t));
-	createTask(nprocess2, otherMain3, kernelProcess.cr3);
+	createTask(nprocess2, otherMain3, NULL, 0, kernelProcess.cr3);
 	process_t *nprocess3 = kmalloc(sizeof(process_t));
-	createTask(nprocess3, otherMain4, kernelProcess.cr3);
+	page_directory_t *newDirectory = create_page_directory();
+	createTask(nprocess3, otherMain4, NULL, 0, newDirectory);
 	printf("\n***END**");
 	while(1){
 		printf("\n first");

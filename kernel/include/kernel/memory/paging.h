@@ -54,8 +54,9 @@ static void clear_frame(uint32_t frame_addr);
 static uint32_t test_frame(uint32_t frame_addr);
 static uint32_t first_frame();
 
-static page_directory_t * create_page_directory();
-static page_directory_t * copy_page_directory(page_directory_t *src);
-
+page_directory_t *create_page_directory();
+page_directory_t *copy_page_directory(page_directory_t *src);
+page_table_t *copyTable(page_table_t *src, uint32_t *phy);
+uint32_t memory_used(); // Used memory en bytes
 #endif
 

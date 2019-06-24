@@ -9,3 +9,4 @@ iso.sh
 qemu.sh
 target-triplet-to-arch.sh
 .settings
+*.o

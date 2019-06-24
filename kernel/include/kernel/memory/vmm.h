@@ -5,8 +5,8 @@
 #include <kernel/memory/paging.h>
 
 #define ALLOC_VMM_START	0xD0000000
-#define ALLOC_VMM_FINISH 0xDFFFF000
-#define ALLOC_VMM_NUM_PAGES 0xFFFF
+#define ALLOC_VMM_FINISH 0xEFFFF000
+#define ALLOC_VMM_NUM_PAGES 0x1FFFF
 
 void vmm_install();
 static void set_page(uint32_t addr);

@@ -78,9 +78,11 @@ static fs_node_t *initrd_finddir(fs_node_t *node, char *name){
 static initrd_tree_node *buildInitrdTree(initrd_node_t *node, initrd_tree_node *parent, uint32_t *identifier){
 	initrd_tree_node *child = (initrd_tree_node*)kmalloc(sizeof(initrd_tree_node));
 	child->parent = parent;
-	child->identifier = *identifier;
+	memcpy(&(child->identifier), identifier, sizeof(uint32_t));
+	//child->identifier = *identifier;
 	*identifier = *identifier + 1;
 	child->content = node;
+	printf("\nNode: %s", node->name);
 	printf("\nIdentifier: %d 0x%x 0x%x", *identifier, parent, node->magic);
 	if(isDir(node->magic)){
 		printf("\nDIR");
@@ -124,8 +126,11 @@ fs_node_t *initialise_initrd() {
 		return NULL;
 	}
 	initrdLocation = initrd_addr;
+	printf("\nInitrd Location: %x", initrdLocation);
+	printf("\nsizeof(fs_node_t): %x", sizeof(fs_node_t));
 	initrd_root = (fs_node_t*) kmalloc(sizeof(fs_node_t));
 	strcpy(initrd_root->name, "initrd");
+	printf("\nMemory used: %x", memory_used());
 	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->inode = initrd_root->length = 0;
 	initrd_root->flags = FS_DIRECTORY;
 	initrd_root->read = 0;
@@ -152,13 +157,19 @@ fs_node_t *initialise_initrd() {
 	initrd_header = (initrd_header_t *) initrdLocation;
 	uint32_t identifier = 0;
 	uint32_t frn = initrd_header->firstNode;
-	initrd_nodes_Tree = buildInitrdTree((initrd_node_t *) ((uint8_t *)(initrdLocation) + frn), NULL, &identifier);
+	printf("\nMemory used: %x", memory_used());
+	printf("\InitrdFrn: 0x%x, frn %x and id: %d", initrdLocation,  frn, &identifier);
+	initrd_nodes_Tree = buildInitrdTree((initrd_node_t *) ((uint8_t *)(initrdLocation + frn)), NULL, &identifier);
+	STOP()
 	root_nodes = (fs_node_t*) kmalloc(sizeof(fs_node_t) * identifier);
 	nroot_nodes = identifier;
-	printf("\nIdentifier: %d 0x%x", identifier, initrd_addr);
+	printf("\Total: %d at 0x%x", nroot_nodes, initrd_addr);
 	// For every file...
 	for (uint32_t i = 0; i < identifier; i++) {
+		printf("\nRd: %d : %x\n : %s", initrd_nodes_Tree->identifier, initrd_nodes_Tree->content, ((initrd_node_t *)initrd_nodes_Tree->content)->name);
 		initrd_tree_node *treeNode = findInitrdNode(initrd_nodes_Tree, i);
+		printf("\ntreeNode: %x", (uint32_t *)treeNode);
+		printf("\ni: %x : %x", i, treeNode->identifier);
 		initrd_node_t * content = (initrd_node_t *) treeNode->content;
 		if (isDir(content->magic)) {
 			strcpy(root_nodes[i].name, content->name);

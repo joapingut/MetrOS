@@ -20,14 +20,14 @@ void fault_handler(irt_regs *r){
 	if(handler != 0){
 		handler(r);
 	}else{
-		panic_exception(exception_messages[r->int_no], exception_messages[r->err_code]);
+		panic_exception(exception_messages[r->int_no], r->err_code);
 		printregs(r);
 		fault_halt();
 	}
 }
 
 void panic_exception(char *message, uint32_t errorCode){
-	set_kernel_panic_vga();
+	//set_kernel_panic_vga();
 	printf("%s Exception. System Halted!\n", message);
 	printf("Error code: 0x%x\n", errorCode);
 }

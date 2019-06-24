@@ -1,0 +1,1 @@
+H:\qemu\qemu-system-i386.exe -cdrom "H:\MetrOS\workspace\MetrOS\metros.iso" -m 512M -s
