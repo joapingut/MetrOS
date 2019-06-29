@@ -13,6 +13,7 @@
 #include <kernel/memory/vmm.h>
 #include <kernel/interruptions/timers.h>
 #include <kernel/io/keyboard.h>
+#include <kernel/io/serial.h>
 #include <filesystem/initrd.h>
 #include <liballoc/liballoc.h>
 #include <kernel/tasking/tasking.h>
@@ -58,6 +59,8 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	//printf("Installing keyboard\n");
 	keyboard_install();
 	printf("Installed keyboard\n");
+	serial_install();
+	printf("Installed Serial\n");
 	//initrdNode = initialise_initrd();
 	printf("Installed initrd\n");
 	tasking_install();
@@ -109,7 +112,6 @@ void kernel_main(void){
 
 	uint32_t dirr = kmalloc(sizeof(uint32_t));
 	printf("Asigned: 0x%x\n", dirr);
-	//while(1);
 	uint32_t *ptr = dirr;
 	printf("PAGE A %x\n", ptr);
 	uint32_t do_page_fault = *ptr;
@@ -145,11 +147,12 @@ void kernel_main(void){
 			STOP()
 		}
 	}
-	switchSchedulerState();
+	
 	printf("\nEND");
-	STOP();
 	process_t *nprocess = kmalloc(sizeof(process_t));
 	createTask(nprocess, otherMain, NULL, 0, kernelProcess.cr3);
+	switchSchedulerState();
+	STOP();
 	process_t *nprocess2 = kmalloc(sizeof(process_t));
 	createTask(nprocess2, otherMain3, NULL, 0, kernelProcess.cr3);
 	process_t *nprocess3 = kmalloc(sizeof(process_t));
@@ -159,7 +162,7 @@ void kernel_main(void){
 	while(1){
 		printf("\n first");
 	}
-	while(1);
+	STOP();
 }
 
 void testinitrdFilesystem(){

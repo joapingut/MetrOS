@@ -84,7 +84,7 @@ void paging_handler(irt_regs *r){
 	int us = r->err_code & 0x4;		// Processor was in user-mode?
 	int reserved = r->err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
 	int id = r->err_code & 0x10;		// Caused by an instruction fetch?
-	printf("\nFaulting: %x\n", faulting_address);
+	printf("\nFaulting (p:%x, rw:%x, u:%x, r:%x, id:%x): %x\n", present, rw, us, reserved, id, faulting_address);
 	if(present){
 		//Obtenemos la pagina que falta o la creamos si no existe
 		page_t *ptm = get_page(faulting_address, 1, current_page_directory);
