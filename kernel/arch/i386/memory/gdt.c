@@ -51,12 +51,12 @@ void gdt_install(void) {
 static void write_tss(int32_t num, uint16_t ss0, uint32_t esp0) {
 	tss_entry_t * tss = &gdt.tss;
 	uintptr_t base = (uintptr_t)tss;
-	uintptr_t limit = base + sizeof *tss;
+	uintptr_t limit = base + sizeof (tss_entry_t);
 
 	/* Add the TSS descriptor to the GDT */
 	gdt_set_gate(num, base, limit, 0xE9, 0x00);
 
-	memset(tss, 0x0, sizeof *tss);
+	memset(tss, 0x0, sizeof (tss_entry_t));
 
 	tss->ss0 = ss0;
 	tss->esp0 = esp0;
@@ -67,7 +67,7 @@ static void write_tss(int32_t num, uint16_t ss0, uint32_t esp0) {
 	tss->fs = 0x13;
 	tss->gs = 0x13;
 
-	tss->iomap_base = sizeof *tss;
+	tss->iomap_base = sizeof (tss_entry_t);
 }
 
 void set_kernel_stack(uintptr_t stack) {

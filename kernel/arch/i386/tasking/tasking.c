@@ -13,18 +13,16 @@
 #include <kernel/tasking/tasking.h>
 #include <utils/elf.h>
 
-//void copyRegs(irt_regs *src, irt_regs *dst);
-
 uint32_t nextIdentifier;
 
-process_t *processList;
-process_t *currentProcess;
+process_t* processList;
+process_t* currentProcess;
 
 bool schedulerOn = false;
 
 void tasking_install(){
 
-    kernelProcess.cr3 = kernel_directory;
+    kernelProcess.cr3 = (uint32_t) kernel_directory;
     kernelProcess.identifier = 0;
     kernelProcess.next = NULL;
     kernelProcess.previous = NULL;
@@ -33,31 +31,34 @@ void tasking_install(){
     processList = NULL;
     currentProcess = &kernelProcess;
     nextIdentifier = 1;
-    //schedulerOn = true;
 }
 
 void switchSchedulerState(){
 	schedulerOn = !schedulerOn;
 }
 
-bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t stack_size, page_directory_t *pagedir){
+bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t stack_size, uint32_t pagedir){
+	printf("\nNew Process");
 	if(stack_bottom == NULL){
-		stack_bottom = (uint32_t) kmalloc(0x1000);
+		stack_bottom = (uint32_t) kmalloc_a(0x1000);
 		stack_size = 0x1000;
+		printf("\nAsigned Stack: %x", stack_bottom);
 	}
-	uint32_t nKesp = (uint32_t) kmalloc(0x1000);
+	uint32_t nKesp = (uint32_t) kmalloc_a(0x1000);
+	memset((uint32_t *) nKesp, 0, 0x1000);
+	printf("\nKesp: %x", nKesp);
 	task->identifier = nextIdentifier;
 	task->status = STARTING;
 	task->next = task;
 	task->previous = task;
 	task->cr3 = pagedir;
 	task->regs.eip = (uint32_t) main;
-	task->regs.esp = stack_bottom + stack_size;
+	task->regs.esp = 0;
 	task->esp0 = nKesp + 0x1000;
 	task->regs.cs = 0x1B;
 	task->regs.ss = 0x23;
 	task->regs.eflags = 0x200;
-	task->regs.useresp = task->regs.esp;
+	task->regs.useresp = stack_bottom + stack_size;
 
 	task->regs.gs = task->regs.ss;
 	task->regs.fs = task->regs.ss;
@@ -72,14 +73,15 @@ bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t
 	task->regs.ecx = 0;
 	task->regs.eax = 0;
 	nextIdentifier += 1;
+	task->previous = NULL;
 	if(processList != NULL){
-		task->previous = processList->previous;
 		task->next = processList;
-		processList->previous->next = task;
 		processList->previous = task;
 	}else{
-		processList = task;
+		task->next = NULL;
 	}
+	processList = task;
+	printf("\nProcess number: %d created", task->identifier);
 	return true;
 }
 
@@ -101,8 +103,6 @@ volatile void switch_task(irt_regs *regs){
 	memcpy(&(currentProcess->regs), regs, sizeof(irt_regs));
 	printregs(&currentProcess->regs);
 
-	page_directory_t *oldC = currentProcess->cr3;
-
 	/* now go onto the next task - if there isn't one, go back to the start of the queue. */
 	currentProcess->status = WAITING;
 	printf("\nOprc %x", currentProcess);
@@ -115,71 +115,55 @@ volatile void switch_task(irt_regs *regs){
 			return;
 		}
 	}else{
-		printf("\nJE %x", nextIdentifier);
 		if (currentProcess->next != NULL){
 			process_t * nextProcess = currentProcess->next;
-			printf("\nCiden: %x", (uint32_t)(currentProcess->identifier));
-			printf("\nAdd: %x %x", nextProcess, currentProcess->regs.eip);
-			printf("\nEsta: %x", currentProcess->status);
-			printf("\nIden %x", nextProcess->identifier);
+			printf("\nCurrent id: %x", (currentProcess->identifier));
+			printf("\nNext id: %x %x", nextProcess->identifier, currentProcess->regs.eip);
+			printf("\nStatus: %x", currentProcess->status);
 			if(currentProcess->identifier != nextProcess->identifier){
 				currentProcess = nextProcess;
 			}else{
 				currentProcess = &kernelProcess;
 			}
 		}else{
-			currentProcess = &kernelProcess;
+			if (processList != NULL){
+				currentProcess = processList;
+			} else {
+				currentProcess = &kernelProcess;
+			}
 		}
 	}
 
-	printf("\nNprc %x", currentProcess);
+	printf("\nNprc %x : %x", currentProcess, currentProcess->regs.eip);
 	currentProcess->status = RUNNING;
 	/* now hack the registers! */
 	memcpy(regs, &(currentProcess->regs), sizeof(irt_regs));
+	printf("Kstack: %x", currentProcess->esp0);
 	set_kernel_stack(currentProcess->esp0);
 	switch_page_directory(currentProcess->cr3);
 
-	if(oldC != currentProcess->cr3){
-		//STOP()
-	}
 	printregs(&currentProcess->regs);
 	printf("\nBYE %x", currentProcess->identifier);
-
-	/*if(currentProcess->identifier == 0){
-		_switchKernelTask();
-	}*/
 };
+
+__attribute__((__noreturn__))
+void enter_user_mode(){
+	process_t * cur = processList;
+	do {
+		printf("\nid: %d", cur->identifier);
+		cur = cur->next;
+	} while (cur != NULL);
+
+	uint32_t esp;
+	asm volatile("mov %%esp, %0" : "=r"(esp));
+	kernelProcess.esp0 = esp;
+	kernelProcess.regs.useresp = esp;
+	schedulerOn = true;
+	HALT();
+}
 
 void printregs(irt_regs *regs){
 	printf("\nGS %x fs %x es %x ds %x", regs->gs, regs->fs, regs->es, regs->ds);
 	printf("\nebp %x esp %x edi %x esi %x", regs->ebp, regs->esp, regs->edi, regs->esi);
 	printf("\nEIP %x CS %x EFLAGS %x USERESP %x SS %x", regs->eip, regs->cs, regs->eflags, regs->useresp, regs->ss);
 }
-/*
-void copyRegs(irt_regs *src, irt_regs *dst){
-	dst->gs = src->gs;
-	dst->fs = src->fs;
-	dst->es = src->es;
-	dst->ds = src->ds;
-
-	//dst->cs = src->cs;
-	dst->eflags = src->eflags;
-	//dst->useresp = 0;
-	//dst->ss = 0;
-
-	dst->edi = 0;
-	dst->esi = 0;
-	dst->ebp = 0;
-	dst->ebx = 0;
-	dst->edx = 0;
-	dst->ecx = 0;
-	dst->eax = 0;
-	/*dst->edi = src->edi;
-	dst->esi = src->esi;
-	dst->ebp = src->ebp;
-	dst->esp = src->esp;
-	dst->ebx = src->ebx;
-	dst->edx = src->edx;
-	dst->ecx = src->ecx;
-	dst->eax = src->eax;
-}*/
