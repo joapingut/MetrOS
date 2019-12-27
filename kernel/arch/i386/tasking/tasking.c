@@ -48,9 +48,8 @@ bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t
 	memset((uint32_t *) nKesp, 0, 0x1000);
 	printf("\nKesp: %x", nKesp);
 	task->identifier = nextIdentifier;
+	nextIdentifier += 1;
 	task->status = STARTING;
-	task->next = task;
-	task->previous = task;
 	task->cr3 = pagedir;
 	task->regs.eip = (uint32_t) main;
 	task->regs.esp = 0;
@@ -72,7 +71,6 @@ bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t
 	task->regs.edx = 0;
 	task->regs.ecx = 0;
 	task->regs.eax = 0;
-	nextIdentifier += 1;
 	task->previous = NULL;
 	if(processList != NULL){
 		task->next = processList;
@@ -95,7 +93,7 @@ void executeFile(fs_node_t *file){
 	}
 }
 
-volatile void switch_task(irt_regs *regs){
+void switch_task(irt_regs *regs){
 	if(!schedulerOn)
 		return;
 	printf("\nScheduler!! %x:%x", currentProcess->identifier, currentProcess->status);
@@ -120,11 +118,7 @@ volatile void switch_task(irt_regs *regs){
 			printf("\nCurrent id: %x", (currentProcess->identifier));
 			printf("\nNext id: %x %x", nextProcess->identifier, currentProcess->regs.eip);
 			printf("\nStatus: %x", currentProcess->status);
-			if(currentProcess->identifier != nextProcess->identifier){
-				currentProcess = nextProcess;
-			}else{
-				currentProcess = &kernelProcess;
-			}
+			currentProcess = nextProcess;
 		}else{
 			if (processList != NULL){
 				currentProcess = processList;

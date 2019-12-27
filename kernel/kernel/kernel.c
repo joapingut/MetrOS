@@ -38,29 +38,21 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	printf("kernel end: 0x%x; tam: 0x%x\n", &__KERNEL_END, &__KERNEL_END - KERNEL_VIRTUAL_BASE);
 	printf("Page directory: 0x%x\n", &BootPageDirectory);
 	printf("Kernel END: 0x%x\n", &end);
-	//printf("Installing GDT\n");
 	gdt_install();
 	printf("Installed GDT\n");
-	//printf("Installing IDT\n");
 	idt_install();
 	printf("Installed IDT\n");
-	//printf("Installing ISRS\n");
 	isrs_install();
 	printf("Installed ISRS\n");
-	//printf("Installing IRQ\n");
 	irq_install();
 	printf("Installed IRQ\n");
-	//printf("Installing PMM\n");
 	pmm_install(mbi);
 	printf("Installed PMM\n");
-	//printf("Installing PAGING\n");
 	paging_install(mbi);
 	vmm_install();
 	printf("Installed PAGING\n");
-	//printf("Installing timers\n");
 	timer_install();
 	printf("Installed timers\n");
-	//printf("Installing keyboard\n");
 	keyboard_install();
 	printf("Installed keyboard\n");
 	serial_install();
@@ -141,26 +133,28 @@ void kernel_main(void){
 	printf("\nEND");
 	uint8_t code [] = { 0x90, 0x00, 0x00, 0x00, 0xEB, 0xFD, 0x00, 0x00 };
 	uint32_t aadcode = kmalloc_a(sizeof(uint8_t) * 8);
-	memcpy(aadcode, code, sizeof(uint8_t) * 3);
-	memcpy(aadcode, code, sizeof(uint8_t) * 3);
+	memcpy(aadcode, code, sizeof(uint8_t) * 8);
 	for(uint8_t i = 0; i < sizeof(uint8_t) * 8 ; i++){
 		printf("\n$$ %x", *(uint8_t *)(aadcode + i));
 	}
-	process_t *nprocess = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess, 0, sizeof(process_t));
+	/*process_t *nprocess = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess, 0, sizeof(process_t));*/
+	process_t nprocess;
 	printf("\nKernelProcess cr3 %x", kernelProcess.cr3);
 	printf("\nNew Process %x", nprocess);
 	printf("\nOther main %x", aadcode);
-	createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
-	process_t *nprocess2 = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess2, 0, sizeof(process_t));
+	createTask(&nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
+	/*process_t *nprocess2 = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess2, 0, sizeof(process_t));*/
+	process_t nprocess2;
 	printf("\nNew Process %x", nprocess2);
-	createTask(nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
-	process_t *nprocess3 = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess3, 0, sizeof(process_t));
+	createTask(&nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
+	/*process_t *nprocess3 = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess3, 0, sizeof(process_t));*/
+	process_t nprocess3;
 	printf("\nNew Process %x", nprocess3);
 	//page_directory_t *newDirectory = create_page_directory();
-	createTask(nprocess3, otherMainInt, NULL, 0, kernelProcess.cr3);
+	createTask(&nprocess3, otherMainInt, NULL, 0, kernelProcess.cr3);
 	printf("\n***END**");
 	enter_user_mode();
 }
