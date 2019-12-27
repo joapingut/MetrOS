@@ -50,7 +50,7 @@ void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_ac
 	} else {
 		idx = page->frame;
 	}
-
+	
 	set_frame(idx << 12); // this frame is now ours!
 	page->ps = 0; //We are using 4KB pages
 	page->present = 1; // Mark it as present.
@@ -114,7 +114,7 @@ uint32_t first_free_frame_index(){
 			for (j = 0; j < 32; j++){
 				uint32_t toTest = 0x1 << j;
 				if ( !(frames_Array[i]&toTest) ){
-					return j+(i*8);
+					return j+(i*8*4);
 				}
 			}
 		}

@@ -137,24 +137,21 @@ void kernel_main(void){
 	for(uint8_t i = 0; i < sizeof(uint8_t) * 8 ; i++){
 		printf("\n$$ %x", *(uint8_t *)(aadcode + i));
 	}
-	/*process_t *nprocess = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess, 0, sizeof(process_t));*/
-	process_t nprocess;
+	process_t *nprocess = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess, 0, sizeof(process_t));
 	printf("\nKernelProcess cr3 %x", kernelProcess.cr3);
 	printf("\nNew Process %x", nprocess);
 	printf("\nOther main %x", aadcode);
-	createTask(&nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
-	/*process_t *nprocess2 = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess2, 0, sizeof(process_t));*/
-	process_t nprocess2;
+	createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
+	process_t *nprocess2 = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess2, 0, sizeof(process_t));
 	printf("\nNew Process %x", nprocess2);
-	createTask(&nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
-	/*process_t *nprocess3 = (process_t *) kmalloc_a(sizeof(process_t));
-	memset(nprocess3, 0, sizeof(process_t));*/
-	process_t nprocess3;
+	createTask(nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
+	process_t *nprocess3 = (process_t *) kmalloc_a(sizeof(process_t));
+	memset(nprocess3, 0, sizeof(process_t));
 	printf("\nNew Process %x", nprocess3);
 	//page_directory_t *newDirectory = create_page_directory();
-	createTask(&nprocess3, otherMainInt, NULL, 0, kernelProcess.cr3);
+	createTask(nprocess3, otherMainInt, NULL, 0, kernelProcess.cr3);
 	printf("\n***END**");
 	enter_user_mode();
 }
