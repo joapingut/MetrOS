@@ -95,7 +95,7 @@ static int _kkybrd_scancode_std [] = {
 	KEY_F12			//0x58
 };
 
-void keyboard_handler(struct regs *r)
+void keyboard_handler(struct irt_regs *r)
 {
     unsigned char scancode;
 

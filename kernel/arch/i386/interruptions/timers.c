@@ -6,6 +6,7 @@
 #include <kernel/interruptions/timers.h>
 #include <kernel/interruptions/irq.h>
 #include <kernel/io/io.h>
+#include <kernel/tasking/tasking.h>
 
 long timer_ticks = 0;
 int timer_seconds = 0;
@@ -17,15 +18,16 @@ void timer_phase(int hz) {
 	outportb(PIT_A, (divisor >> 8) & PIT_MASK);
 }
 
-void timer_handler(regs *r){
+void timer_handler(irt_regs *r){
     /* Increment our 'tick count' */
     timer_ticks++;
 
     /* Every 18 clocks (approximately 1 second), we will
     *  display a message on the screen */
     if (timer_ticks % 1000 == 0){
-	timer_seconds++;
-        //printf("%d seconds has passed\n", timer_seconds);
+    	timer_seconds++;
+    	switch_task(r);
+        //printf("\n%d seconds has passed\n", timer_seconds);
     }
 }
 

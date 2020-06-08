@@ -7,7 +7,6 @@
 #include <kernel/memory/paging.h>
 #include <kernel/screen/tty.h>
 
-static isrs_pointers_t isrs;
 static isrs_function isrs_routines[256] = {0};
 
 void register_isrs_handler(uint32_t isrs, isrs_function handler){
@@ -16,20 +15,21 @@ void register_isrs_handler(uint32_t isrs, isrs_function handler){
 	}
 }
 
-void fault_handler(regs *r){
+void fault_handler(irt_regs *r){
 	isrs_function handler = isrs_routines[r->int_no];
 	if(handler != 0){
 		handler(r);
 	}else{
-		panic_exception(exception_messages[r->int_no], exception_messages[r->err_code]);
+		panic_exception(exception_messages[r->int_no], r->err_code);
+		printregs(r);
+		fault_halt();
 	}
 }
 
 void panic_exception(char *message, uint32_t errorCode){
-	set_kernel_panic_vga();
+	//set_kernel_panic_vga();
 	printf("%s Exception. System Halted!\n", message);
 	printf("Error code: 0x%x\n", errorCode);
-	fault_halt();
 }
 
 void panic(const char *message, const char *file, uint32_t line){

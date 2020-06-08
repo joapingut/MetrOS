@@ -52,12 +52,13 @@
 
 #define LIBALLOC_MAGIC	0xc001c0de
 #define LIBALLOC_DEAD	0xdeaddead
+//#define DEBUG 1
 
 #if defined DEBUG || defined INFO
 #include <stdio.h>
 #include <stdlib.h>
 
-#define FLUSH()		fflush( stdout )
+#define FLUSH()	printf("\n");	//fflush( stdout )
 
 #endif
 
@@ -283,7 +284,7 @@ void *PREFIX(malloc)(size_t req_size)
 		#ifdef DEBUG
 		printf( "liballoc: initialization of liballoc " VERSION "\n" );
 		#endif
-		atexit( liballoc_dump );
+		//atexit( liballoc_dump );
 		FLUSH();
 		#endif
 

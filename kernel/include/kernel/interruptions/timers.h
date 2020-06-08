@@ -17,7 +17,7 @@
 #define SUBTICKS_PER_TICK 1000
 #define RESYNC_TIME 1
 
-void timer_handler(regs *r);
+void timer_handler(irt_regs *r);
 void timer_install();
 void ticks();
 

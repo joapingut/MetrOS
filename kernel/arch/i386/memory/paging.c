@@ -4,62 +4,52 @@
 #include <string.h>
 
 #include <kernel/memory/paging.h>
+#include <kernel/memory/pmm.h>
 #include <kernel/memory/alloc.h>
 #include <kernel/interruptions/isrs.h>
 #include <kernel/interruptions/idt.h>
-#include <kernel/memory/kheap.h>
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir);
-uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory);
 uint32_t loadModulesFromGrub(multiboot_info_t *mbi);
-void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_accessed, bool is_dirty, bool map_frame, uint32_t frameAddr);
+page_table_t* get_table_by_self_directory(page_directory_t *dir);
+//void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_accessed, bool is_dirty, bool map_frame, uint32_t frameAddr);
 void switch_4kb_pagination(uint32_t phy);
 void refresh_page(uint32_t address);
 
-page_directory_t *kernel_directory; //The page directory created on boot.S for kernel
 page_directory_t *current_page_directory;
 uint32_t next_freeAddress; // First 4MB (first page) reserved
 uint32_t next_virtualFreeAddress;
 uint32_t modules_firstAddress;
-static uint32_t max_num_frames; //Max number of frames for installed memory
-static uint32_t *frames_Array; //Pointer to array with the frames status (0 FREE, 1 USED)
-heap_t *kheap = 0; //Pointer to the heap
+
+
+bool starting = true;
 
 extern uint8_t *initrd_addr;
 
 void paging_install(multiboot_info_t *mbi){
-	/***First create the bitmap***/
-	//Leemos la cabecera que nos ha pasado GRUB para sacar el tamaño
-	uint32_t memoryTam = getMemoryAmountFromGrub(mbi, false);
-	max_num_frames = memoryTam / PAGE_TAM;
-	//Direccion para el bitmap despues del kernel
-	next_freeAddress = (uint32_t)((((uint32_t) &__KERNEL_END) + 4) - KERNEL_VIRTUAL_BASE);
-	next_virtualFreeAddress =  (uint32_t)(((uint32_t) &__KERNEL_END) + 4);
-	printf("\n%x : %x", next_freeAddress, next_virtualFreeAddress);
-	//Obtenemos un array para el bitmap
-	frames_Array = (uint32_t *)kmalloc_dumb(INDEX_FROM_BIT(max_num_frames));
-	//Limpiamos el contenido de la memoria
-	memset(frames_Array, 0, INDEX_FROM_BIT(max_num_frames));
-	//Leemos la cabecera que nos ha pasado GRUB de nuevo para marcar los lugares reservados
-	getMemoryAmountFromGrub(mbi, true);
-	printf("\nMax num frames: %d; TAM: %d bytes\n", max_num_frames, memoryTam);
-	if(max_num_frames <= 4){
-		PANIC("INSTALLED MEMORY BELOW 16MB");
-	}
-	//Creamos un nuevo directory para la paginacion que ademas sera el del kernel
-	//Lo haremos en el area del kernel y no en la de los directorios
+	// Primero creamos un nuevo directory para la paginación que además será el del kernel
+	// Obtenemos un bloque de memoria libre (4kb) que es el tamaño de un directorio.
 	uint32_t phy;
-	uint32_t *newPD = (uint32_t *)kmalloc_ap(sizeof(page_directory_t), &phy);
+	uint32_t *newPD = kmalloc_ap(sizeof(page_directory_t), &phy);
+	// Limpiamos el contenido de la memoria
 	memset(newPD, 0, sizeof(page_directory_t));
 	//El nuevo directorio será el reservado para el kernel
-	kernel_directory = (page_directory_t *)newPD;
+	kernel_directory = (page_directory_t *) newPD;
 	//Mapeamos la ultima pagina del directorio a si mismo
 	//newPD[1023] = phy | 0x63;
-	//Iniciamos las paginas del kernel
-	for(uint32_t i = KERNEL_VIRTUAL_BASE; i < next_virtualFreeAddress; i += PAGE_TAM){
+	// Para evitar reclamar memoria que ya está ocupada iniciamos las paginas del kernel en el directorio
+	uint32_t kernel_space_end = next_virtualFreeAddress;
+	printf("\nTo install %x : %x", KERNEL_VIRTUAL_BASE, kernel_space_end);
+	for(uint32_t i = KERNEL_VIRTUAL_BASE; i <= kernel_space_end; i += PAGE_TAM){
 		page_t *pg = get_page(i, 1, kernel_directory);
+		free_frame(pg);
 		alloc_frame_int(pg, true, true, true, true, true, i - KERNEL_VIRTUAL_BASE);
 	}
+	printf("\nkernel installed");
+	printf("\nRecursive: %x at %x", newPD, phy);
+	//kernel_directory->tables[1023] = (page_table_t *) ((uint32_t)phy | 0x63);
+
+	starting = false;
 	if(modules_firstAddress != NULL){
 		uint32_t initrd = loadModulesFromGrub(mbi);
 		initrd_addr = (uint8_t *)initrd;
@@ -73,7 +63,7 @@ void paging_install(multiboot_info_t *mbi){
 	switch_4kb_pagination(phy);
 }
 
-void paging_handler(regs *r){
+void paging_handler(irt_regs *r){
 	//The address with the error is in cr2
 	uint32_t faulting_address;
 	asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
@@ -83,48 +73,77 @@ void paging_handler(regs *r){
 	int us = r->err_code & 0x4;		// Processor was in user-mode?
 	int reserved = r->err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
 	int id = r->err_code & 0x10;		// Caused by an instruction fetch?
-	printf("\nFaulting: %x\n", faulting_address);
+	printf("\nFaulting (p:%x, rw:%x, u:%x, r:%x, id:%x): %x\n", present, rw, us, reserved, id, faulting_address);
 	if(present){
 		//Obtenemos la pagina que falta o la creamos si no existe
 		page_t *ptm = get_page(faulting_address, 1, current_page_directory);
 		alloc_frame(ptm, true, true);
 		//Actualizamos la cache de direcciones de la CPU
 		refresh_page(faulting_address);
-		/*if(faulting_address == 0xA0100032){
+		printf("\nPtm %x : %x", faulting_address, ptm->frame);
+		if(faulting_address == 0){
 			printf("CE: 0x%x", *(uint32_t *)ptm);
 			while(1);
-		}*/
+		}
 	}else{
-		printf("P: %d; RW: %d; US: %d; R: %d; ID: %d;\n", present, rw, us, reserved, id);
 		uint32_t fcr3, fcr4, fcr0;
 		asm volatile("mov %%cr3, %0" : "=r" (fcr3));
 		asm volatile("mov %%cr4, %0" : "=r" (fcr4));
 		asm volatile("mov %%cr0, %0" : "=r" (fcr0));
-		printf("CR3: %x; CR4: %x; CR0: %x\n", fcr3, fcr4, fcr0);
-		panic_exception("Paging handler", 0x22);
+		//panic_exception("Paging handler", 0x22);
+		printf("\nFatal error, Faulting: %x", faulting_address);
+		printf("\nCR3: %x; CR4: %x; CR0: %x", fcr3, fcr4, fcr0);
+		printf("\nP: %d; RW: %d; US: %d; R: %d; ID: %d;\n", present, rw, us, reserved, id);
+		printregs(r);
+		fault_halt();
 	}
 }
 
 page_t *get_page(uint32_t address, int make, page_directory_t *dir){
 	// Turn the address into an index.
-	uint32_t table_idx = address / PAGE_TAM_4MB;
-	uint32_t page_idx = (address / PAGE_TAM) % 1024;
-	if(address == 0xD7FE0008){
-		STOP()
+	uint32_t table_idx = PAGE_DIRECTORY_INDEX(address);
+	uint32_t page_idx = PAGE_TABLE_INDEX(address);
+	printf("\nget_page: t: %d, p: %d %x, %x, %x", table_idx, page_idx,  address, make, dir->tables[table_idx]);
+
+	uint32_t *table = (uint32_t *) &(dir->tables[table_idx]);
+
+	bool table_exist = false;
+
+	if(table != NULL && dir->physical[table_idx].present != 0){// If this table is already assigned *(uint32_t *)(&dir->tables[table_idx])!=0
+		table_exist = true;
+		page_t* page = &(dir->tables[table_idx]->pages[page_idx]);
+		printf("\nTable exist: %x : %x ", dir->physical[table_idx], page);
+		if (page != NULL && page->present != 0) {
+			printf("\nAddress %x Already: 0x%x ", address, *page);
+			return page;
+		}
 	}
-	if(*(uint32_t *)(&dir->tables[table_idx])!=0){// If this table is already assigned
-		//printf("Address %x Already: 0x%x ",address,  dir->physical_tables[table_idx]);
-		return &(dir->tables[table_idx]->pages[page_idx]);
-	}
+
 	if(make){
-		uint32_t phy;
-		uint32_t *tmp = (uint32_t *)kmalloc_ap(sizeof(page_table_t), &phy);
-		memset(tmp, 0, sizeof(page_table_t));
-		dir->tables[table_idx] = (page_table_t *)tmp;
-		dir->physical_tables[table_idx] = (uintptr_t)(phy | PAGE_DEFAULT_VALUE);
-		return &(dir->tables[table_idx]->pages[page_idx]);
+		page_table_t * page_table;
+		if (!table_exist) {
+			// Obtenemos un bloque (4kb) para alojar una nueva tabla de páginas
+			uint32_t pt_phy;
+			page_table = (page_table_t *) kmalloc_ap(sizeof(page_table_t), &pt_phy);
+			// Limpiamos el area que nos han dado
+			memset((uint32_t *) page_table, 0, sizeof(page_table_t));
+			dir->physical[table_idx].frame = pt_phy >> 12;
+			dir->physical[table_idx].present = 1;
+			dir->physical[table_idx].rw = 1;
+			dir->physical[table_idx].user = 1;
+			dir->tables[table_idx] = page_table;
+			printf("\nNew Table: %x : %x", dir->physical[table_idx], dir->tables[table_idx]);
+		} else {
+			page_table = dir->tables[table_idx];
+		}
+		// Ahora creamos la pagina en si
+		page_t * page = &page_table->pages[page_idx];
+		alloc_frame_int(page, true, true, true, true, false, NULL);
+		printf("\nReturn %x : %x : %x", page_table, page, (page->frame << 12));
+		return page;
 	}
-	return 0;
+
+	return NULL;
 }
 
 page_t *get_page_default(uint32_t address, int make){
@@ -132,8 +151,14 @@ page_t *get_page_default(uint32_t address, int make){
 }
 
 void switch_page_directory(page_directory_t *dir){
+	page_directory_t *work = current_page_directory;
 	current_page_directory = dir;
-	asm volatile("mov %0, %%cr3":: "r"(to_physical_addr(&dir, dir)): "%eax");
+	if(work != dir){
+		printf("\nDir = %x old %x ker %x", (uint32_t)dir, (uint32_t)work, (uint32_t)kernel_directory);
+		printf("\n PTY %x k %x", to_physical_addr((uint32_t)dir, work), to_physical_addr((uint32_t)dir, kernel_directory));
+		//STOP()
+	}
+	asm volatile("mov %0, %%cr3":: "r"(to_physical_addr((uint32_t)dir, work)): "%eax");
 }
 
 void switch_4kb_pagination(uint32_t phy){
@@ -154,45 +179,17 @@ void refresh_page(uint32_t address){
 }
 
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir){
-	uint32_t table_idx = virtual / PAGE_TAM_4MB;
-	uint32_t page_idx = (virtual / PAGE_TAM) % 1024;
-	uint32_t *tableDEntry = 0xFFFFF000 + (table_idx * sizeof(uint32_t));
-	//check if table really exist
-	uint32_t *table =  0xFFC00000 + (table_idx * PAGE_TAM);
-	//check if page exist
-	return (uintptr_t)((table[page_idx] & ~PAGE_MASC) + (virtual & PAGE_MASC));
-}
-
-uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory){
-	uint64_t memory = 0;
-	multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) (mbi->mmap_addr + KERNEL_VIRTUAL_BASE);
-	while((uint32_t) mmap < (mbi->mmap_addr + mbi->mmap_length) + KERNEL_VIRTUAL_BASE) {
-		printf("Size = 0x%x, ", (uint32_t) mmap->size);
-		printf("base_addr = 0x%x", (uint32_t)(mmap->addr >> 32));
-		printf("%x, ", (uint32_t)(mmap->addr & 0xFFFFFFFF));
-		printf("length = 0x%x", (uint32_t)(mmap->len >> 32));
-		printf("%x, ", (uint32_t)(mmap->len & 0xFFFFFFFF));
-		printf("type = 0x%x\n", (uint32_t) mmap->type);
-		if((uint32_t)mmap->type == 0x01){
-			memory += (uint64_t)mmap->len;
-		}else if(setMemory){
-			for(uint64_t i = mmap->addr; i < (mmap->addr + mmap->len); i += PAGE_TAM){
-				set_frame((uint32_t)(i & 0xFFFFFFFF));
-			}
+	uintptr_t remaining = virtual % 0x1000;
+	uintptr_t frame = virtual / 0x1000;
+	uintptr_t table = frame / 1024;
+	uintptr_t subframe = frame % 1024;
+	if (dir->tables[table] != NULL) {
+		page_t *p = &dir->tables[table]->pages[subframe];
+		if (p != NULL){
+			return (p->frame << 12) + remaining;
 		}
-		mmap = (multiboot_memory_map_t *) ((unsigned int) mmap + (unsigned int)mmap->size + sizeof(uint32_t));
 	}
-	uint32_t initrd_location = *((uint32_t*)mbi->mods_addr);
-	uint32_t initrd_end = *(uint32_t*)(mbi->mods_addr+4);
-	if(initrd_location == initrd_end){
-		printf("\nNo GRUB modules found");
-		initrd_location = NULL;
-	}else{
-		printf("\nGRUB modules found!!");
-		printf("\nFirst module from 0x%x to 0x%x", initrd_location, initrd_end);
-		modules_firstAddress = initrd_location;
-	}
-	return (uint32_t)(memory & 0xFFFFFFFF);
+	return NULL;
 }
 
 uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
@@ -219,7 +216,8 @@ uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
 		next_freeAddress &= 0xFFFFF000;
 		next_freeAddress += 0x00001000;
 	}
-	printf("\ninitrd: 0x%x\n", initrd_location);
+	printf("\nInitrd: 0x%x\n", initrd_location);
+	printf("\nInitrd tam: 0x%x\n", module_tam);
 	for(int i= 0; i < 0x20; i++){
 		printf("0x%x ", *((uint8_t *) (initrd_location + i)));
 	}
@@ -232,6 +230,7 @@ uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
 	for(i = 0; i < module_tam; i += PAGE_TAM){
 		next_virtualFreeAddress += i;
 		page_t *pg = get_page(next_virtualFreeAddress, 1, kernel_directory);
+		free_frame(pg);
 		alloc_frame_int(pg, true, true, true, true, true, initrd_frame + i);
 		printf("\n%x : %x", next_virtualFreeAddress, initrd_frame );
 	}
@@ -248,83 +247,40 @@ uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
 	return module_virtualAddr;
 }
 
-// Function to allocate a frame.
-void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_accessed, bool is_dirty, bool map_frame, uint32_t frameAddr){
-	uint32_t idx;
-	if(map_frame){
-		idx = frameAddr >> 12;
-	}else{
-		idx = first_frame(); // idx is now the index of the first free frame.
-	} 
-	if (idx == (uint32_t) -1){
-		PANIC("No free frames!");
+
+
+page_directory_t * create_page_directory(){
+	page_directory_t *newPD = (page_directory_t *)kmalloc_dumb(sizeof(page_directory_t));
+	memset(newPD, 0, sizeof(page_directory_t));
+	for(int i = KERNEL_PAGE; i < 1024; i++){
+		newPD->tables[i] = kernel_directory->tables[i];
+		//newPD->physical_tables[i] = kernel_directory->physical_tables[i];
 	}
-	set_frame(idx << 12); // this frame is now ours!
-	page->ps = 0; //We are using 4KB pages
-	page->present = 1; // Mark it as present.
-	page->rw = (is_writeable == true)?1:0; // Should the page be writeable?
-	page->user = (is_kernel == true)?0:1; // Should the page be user-mode?
-	page->accessed = (is_accessed == true)?1:0;
-	page->dirty = (is_dirty == true)?1:0;
-	page->frame = idx;
+	return newPD;
 }
 
-void alloc_frame(page_t *page, bool is_kernel, bool is_writeable){
-	alloc_frame_int(page, is_kernel, is_writeable, false, false, false, 0);
-}
-
-// Function to deallocate a frame.
-void free_frame(page_t *page){
-	if(page == 0){
-		return;
-	}
-	if (!test_frame((page->frame) << 12)){
-		return; // The given page didn't actually have an allocated frame!
-	}else{
-		clear_frame((page->frame) << 12); // Frame is now free again.
-		*((uint32_t *)page) = 0;
-	}
-}
-
-// Static function to set a bit in the frames bitset
-static void set_frame(uint32_t frame_addr){
-	uint32_t frame = frame_addr/PAGE_TAM;
-	uint32_t idx = INDEX_FROM_BIT(frame);
-	uint32_t off = OFFSET_FROM_BIT(frame);
-	frames_Array[idx] |= (0x1 << off);
-}
-
-
-// Static function to clear a bit in the frames bitset
-static void clear_frame(uint32_t frame_addr){
-	uint32_t frame = frame_addr/PAGE_TAM;
-	uint32_t idx = INDEX_FROM_BIT(frame);
-	uint32_t off = OFFSET_FROM_BIT(frame);
-	frames_Array[idx] &= ~(0x1 << off);
-}
-
-// Static function to test if a bit is set.
-static uint32_t test_frame(uint32_t frame_addr){
-	uint32_t frame = frame_addr/PAGE_TAM;
-	uint32_t idx = INDEX_FROM_BIT(frame);
-	uint32_t off = OFFSET_FROM_BIT(frame);
-	return (frames_Array[idx] & (0x1 << off));
-}
-
-// Static function to find the first free frame.
-static uint32_t first_frame(){
-	uint32_t i, j;
-	for (i = 0; i < INDEX_FROM_BIT(max_num_frames); i++){
-		if (frames_Array[i] != 0xFFFFFFFF){ // nothing free, exit early.
-			// at least one bit is free here.
-			for (j = 0; j < 32; j++){
-				uint32_t toTest = 0x1 << j;
-				if ( !(frames_Array[i]&toTest) ){
-					return i*4*8+j;
-				}
-			}
+page_directory_t * copy_page_directory(page_directory_t *src){
+	page_directory_t *newPD = (page_directory_t *)kmalloc(sizeof(page_directory_t));
+	memset(newPD, 0, sizeof(page_directory_t));
+	for(int i = 0; i < 1024; i++){
+		if(i >= KERNEL_PAGE){
+			newPD->tables[i] = src->tables[i];
+			//newPD->physical_tables[i] = src->physical_tables[i];
+		} else if (src->tables[i] != NULL){
+			uint32_t phy = 0;
+			newPD->tables[i] = copyTable(src->tables[i], &phy);
+			//newPD->physical_tables[i] = (uintptr_t)phy;
 		}
 	}
-	return NULL;
+	return newPD;
+}
+
+page_table_t *copyTable(page_table_t *src, uint32_t *phy){
+	page_table_t *newPD = (page_directory_t *)kmalloc(sizeof(page_directory_t));
+	*phy = ((uint32_t) to_physical_addr((uint32_t) &newPD, kernel_directory));
+	for(int i= 0; i < 1024; i++){
+		memcpy(&(newPD->pages[i]), &(src->pages[i]), sizeof(page_t));
+	}
+	return newPD;
 }
 

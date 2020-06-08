@@ -77,11 +77,12 @@ typedef struct{
 	uintptr_t gates[ISR_COUNT];
 } isrs_pointers_t;
 
-typedef void (*isrs_function)(regs *r);
+typedef void (*isrs_function)(irt_regs *r);
 
 void isrs_install();
-void fault_handler(regs *r);
+void fault_handler(irt_regs *r);
 void panic_exception(char *message, uint32_t errorCode);
 void register_isrs_handler(uint32_t isrs, isrs_function handler);
+
 
 #endif

@@ -9,3 +9,8 @@ iso.sh
 qemu.sh
 target-triplet-to-arch.sh
 .settings
+*.o
+.vs
+.vscode
+kernel.sym
+qemu.log

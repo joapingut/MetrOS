@@ -5,6 +5,7 @@
 
 #include <kernel/screen/vga.h>
 #include <kernel/io/io.h>
+#include <kernel/io/serial.h>
 
 size_t terminal_row;
 size_t terminal_column;
@@ -71,8 +72,10 @@ void terminal_movecursor(size_t x, size_t y){
 }
 
 void terminal_write(const char* data, size_t size){
-	for ( size_t i = 0; i < size; i++ )
+	for ( size_t i = 0; i < size; i++ ) {
 		terminal_putchar(data[i]);
+		write_serial(data[i]);
+	}
 }
 
 void terminal_writestring(const char* data){

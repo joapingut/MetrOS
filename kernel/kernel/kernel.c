@@ -9,12 +9,16 @@
 #include <kernel/interruptions/idt.h>
 #include <kernel/interruptions/isrs.h>
 #include <kernel/interruptions/irq.h>
+#include <kernel/memory/pmm.h>
 #include <kernel/memory/paging.h>
 #include <kernel/memory/vmm.h>
 #include <kernel/interruptions/timers.h>
 #include <kernel/io/keyboard.h>
+#include <kernel/io/serial.h>
 #include <filesystem/initrd.h>
 #include <liballoc/liballoc.h>
+#include <kernel/tasking/tasking.h>
+#include <kernel/syscalls/syscalls.h>
 
 extern uint32_t end;
 fs_node_t *initrdNode;
@@ -34,30 +38,44 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 	printf("kernel end: 0x%x; tam: 0x%x\n", &__KERNEL_END, &__KERNEL_END - KERNEL_VIRTUAL_BASE);
 	printf("Page directory: 0x%x\n", &BootPageDirectory);
 	printf("Kernel END: 0x%x\n", &end);
-	//printf("Installing GDT\n");
 	gdt_install();
 	printf("Installed GDT\n");
-	//printf("Installing IDT\n");
 	idt_install();
 	printf("Installed IDT\n");
-	//printf("Installing ISRS\n");
 	isrs_install();
 	printf("Installed ISRS\n");
-	//printf("Installing IRQ\n");
 	irq_install();
 	printf("Installed IRQ\n");
-	//printf("Installing PAGING\n");
+	pmm_install(mbi);
+	printf("Installed PMM\n");
 	paging_install(mbi);
 	vmm_install();
 	printf("Installed PAGING\n");
-	//printf("Installing timers\n");
 	timer_install();
 	printf("Installed timers\n");
-	//printf("Installing keyboard\n");
 	keyboard_install();
 	printf("Installed keyboard\n");
-	initrdNode = initialise_initrd();
+	serial_install();
+	printf("Installed Serial\n");
+	//initrdNode = initialise_initrd();
 	printf("Installed initrd\n");
+	tasking_install();
+	printf("Installed tasking\n");
+	syscalls_install();
+	printf("Installed syscalls\n");
+}
+
+static void otherMainInt() {
+	while(1){
+		__asm__ (
+				"int $0x80;"
+		);
+	}
+	STOP()
+}
+
+static void otherMainWhile() {
+	STOP()
 }
 
 void kernel_main(void){
@@ -76,7 +94,6 @@ void kernel_main(void){
 
 	uint32_t dirr = kmalloc(sizeof(uint32_t));
 	printf("Asigned: 0x%x\n", dirr);
-	//while(1);
 	uint32_t *ptr = dirr;
 	printf("PAGE A %x\n", ptr);
 	uint32_t do_page_fault = *ptr;
@@ -98,9 +115,45 @@ void kernel_main(void){
 	uint32_t *ptrc = kmalloc(sizeof(uint32_t));
 	printf("PAGE B %x\n", ptrb);
 	printf("PAGE C %x\n", ptrc);
-	testinitrdFilesystem();
+	if(initrdNode != NULL){
+		testinitrdFilesystem();
+		fs_node_t *fsnode = finddir_fs(initrdNode, "dumb.o");
+		if(fsnode != NULL){
+			printf("\nNode Found! Executing..");
+			/*process_t *elfProcess = kmalloc_dumb(sizeof(process_t));
+			page_directory_t *newDirectory = create_page_directory();
+			createTask(elfProcess, otherMain4, NULL, 0, newDirectory);
+			int exec_elf(fsnode, process_t *elf_process);*/
+			printf(" Fsnode %s", fsnode->name);
+			executeFile(fsnode);
+			STOP()
+		}
+	}
+	
+	printf("\nEND");
+	uint8_t code [] = { 0x90, 0x00, 0x00, 0x00, 0xEB, 0xFD, 0x00, 0x00 };
+	uint32_t aadcode = kmalloc(sizeof(uint8_t) * 8);
+	memcpy(aadcode, code, sizeof(uint8_t) * 8);
+	for(uint8_t i = 0; i < sizeof(uint8_t) * 8 ; i++){
+		printf("\n$$ %x", *(uint8_t *)(aadcode + i));
+	}
+	process_t *nprocess = (process_t *) kmalloc(sizeof(process_t));
+	memset(nprocess, 0, sizeof(process_t));
+	printf("\nKernelProcess cr3 %x", kernelProcess.cr3);
+	printf("\nNew Process %x", nprocess);
+	printf("\nOther main %x", aadcode);
+	createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
+	process_t *nprocess2 = (process_t *) kmalloc(sizeof(process_t));
+	memset(nprocess2, 0, sizeof(process_t));
+	printf("\nNew Process %x", nprocess2);
+	createTask(nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
+	process_t *nprocess3 = (process_t *) kmalloc(sizeof(process_t));
+	memset(nprocess3, 0, sizeof(process_t));
+	printf("\nNew Process %x", nprocess3);
+	//page_directory_t *newDirectory = create_page_directory();
+	createTask(nprocess3, otherMainInt, NULL, 0, kernelProcess.cr3);
 	printf("\n***END**");
-	while(1);
+	enter_user_mode();
 }
 
 void testinitrdFilesystem(){

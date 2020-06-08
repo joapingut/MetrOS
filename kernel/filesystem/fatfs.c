@@ -13,7 +13,9 @@
 #include <filesystem/fatfs.h>
 
 
-uint32_t read_fatfs(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
+uint32_t read_fatfs(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+
+}
 uint32_t write_fatfs(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
 void open_fatfs(fs_node_t *node, uint8_t read, uint8_t write);
 void close_fatfs(fs_node_t *node);

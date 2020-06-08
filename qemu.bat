@@ -1,0 +1,1 @@
+H:\qemu\qemu-system-i386.exe -cdrom "H:\MetrOS\workspace\MetrOS\metros.iso" -D "H:\MetrOS\workspace\MetrOS\qemu.log" -d cpu_reset -m 512M -s -serial telnet:localhost:5564,server,nowait
