@@ -75,7 +75,10 @@ static void otherMainInt() {
 }
 
 static void otherMainWhile() {
-	STOP()
+	__asm__ (
+				"movl %eax, 69; int $0x80;"
+		);
+	STOP();
 }
 
 void kernel_main(void){
@@ -142,7 +145,7 @@ void kernel_main(void){
 	printf("\nKernelProcess cr3 %x", kernelProcess.cr3);
 	printf("\nNew Process %x", nprocess);
 	printf("\nOther main %x", aadcode);
-	createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
+	//createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
 	process_t *nprocess2 = (process_t *) kmalloc(sizeof(process_t));
 	memset(nprocess2, 0, sizeof(process_t));
 	printf("\nNew Process %x", nprocess2);

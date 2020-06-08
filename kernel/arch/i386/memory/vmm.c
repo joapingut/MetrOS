@@ -22,7 +22,7 @@ void vmm_install(){
 	if(ALLOC_VMM_NUM_PAGES % 32 != 0){
 		tam += 1;
 	}
-	pages_Array = (uint32_t *)kmalloc_dumb(sizeof(uint32_t) * tam);
+	pages_Array = (uint32_t *)kdmalloc(sizeof(uint32_t) * tam); // Reemplazar
 	//Limpiamos el contenido de la memoria
 	memset(pages_Array, 0, sizeof(uint32_t) * tam);
 }
