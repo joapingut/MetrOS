@@ -68,7 +68,7 @@ void kernel_early(multiboot_info_t* mbi, unsigned int magic){
 static void otherMainInt() {
 	while(1){
 		__asm__ (
-				"int $0x80;"
+				"movl $25, %eax; int $0x80;"
 		);
 	}
 	STOP()
@@ -76,7 +76,7 @@ static void otherMainInt() {
 
 static void otherMainWhile() {
 	__asm__ (
-				"movl %eax, 69; int $0x80;"
+				"movl $69, %eax; int $0x80;"
 		);
 	STOP();
 }
