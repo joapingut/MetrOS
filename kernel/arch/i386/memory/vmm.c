@@ -106,11 +106,11 @@ void* liballoc_alloc(size_t num_pages){
 		return NULL;
 	}
 	uint32_t addr = ALLOC_VMM_START + (PAGE_TAM * freePage);
-	for(int i = 0; i < num_pages; i++){
+	for(uint32_t i = 0; i < num_pages; i++){
 		printf("\nLIBALLOC ADDR: 0x%x - ", addr + (PAGE_TAM * i));
 		set_page(freePage + i);
 		page_t *pg = get_page_default(addr + (PAGE_TAM * i), 1);
-		alloc_frame_int(pg, true, true, true, true, false, 0);		
+		//alloc_frame_int(pg, true, true, true, true, false, NULL);
 		//Actualizamos la cache de direcciones de la CPU
 		refresh_page(addr + (PAGE_TAM * i));
 		printf("\nLIBALLOC PAGE: 0x%x - ", *((uint32_t *)pg));
@@ -120,7 +120,7 @@ void* liballoc_alloc(size_t num_pages){
 
 int liballoc_free(void* addr, size_t num_pages) {
 	uint32_t page = (((uint32_t)addr) - ALLOC_VMM_START) / PAGE_TAM;
-	for (int i = 0; i < num_pages; i++) {
+	for (uint32_t i = 0; i < num_pages; i++) {
 		clear_page(page + i);
 		page_t *pg = get_page_default(addr + (PAGE_TAM * i), 1);
 		free_frame(pg);

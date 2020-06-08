@@ -64,7 +64,7 @@ void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_ac
 }
 
 void alloc_frame(page_t *page, bool is_kernel, bool is_writeable){
-	alloc_frame_int(page, is_kernel, is_writeable, false, false, false, 0);
+	alloc_frame_int(page, is_kernel, is_writeable, false, false, false, NULL);
 }
 
 // Function to deallocate a frame.

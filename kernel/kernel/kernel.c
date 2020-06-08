@@ -92,14 +92,14 @@ void kernel_main(void){
 	printf("Resultado: %d!\n", a);
 	ticks();
 
-	uint32_t dirr = kmalloc_dumb(sizeof(uint32_t));
+	uint32_t dirr = kmalloc(sizeof(uint32_t));
 	printf("Asigned: 0x%x\n", dirr);
 	uint32_t *ptr = dirr;
 	printf("PAGE A %x\n", ptr);
 	uint32_t do_page_fault = *ptr;
 	printf("PAGE F %d", do_page_fault);
 	kfree(ptr);
-	ptr = kmalloc_dumb(sizeof(uint32_t));
+	ptr = kmalloc(sizeof(uint32_t));
 	printf("PAGE A %x\n", ptr);
 	//ptr = (uintptr_t)0xA0100032;
 	printf("\nPAGE B %x\n", ptr);
@@ -107,12 +107,12 @@ void kernel_main(void){
 	do_page_fault = *ptr;	
 	printf("\nPAGE F %d\n", do_page_fault);
 
-	uint32_t *ptra = kmalloc_dumb(sizeof(uint32_t));
-	uint32_t *ptrb = kmalloc_dumb(sizeof(uint32_t));
+	uint32_t *ptra = kmalloc(sizeof(uint32_t));
+	uint32_t *ptrb = kmalloc(sizeof(uint32_t));
 	printf("PAGE A %x\n", ptra);
 	printf("PAGE B %x\n", ptrb);
 	kfree(ptra);
-	uint32_t *ptrc = kmalloc_dumb(sizeof(uint32_t));
+	uint32_t *ptrc = kmalloc(sizeof(uint32_t));
 	printf("PAGE B %x\n", ptrb);
 	printf("PAGE C %x\n", ptrc);
 	if(initrdNode != NULL){
@@ -132,22 +132,22 @@ void kernel_main(void){
 	
 	printf("\nEND");
 	uint8_t code [] = { 0x90, 0x00, 0x00, 0x00, 0xEB, 0xFD, 0x00, 0x00 };
-	uint32_t aadcode = kmalloc_a(sizeof(uint8_t) * 8);
+	uint32_t aadcode = kmalloc(sizeof(uint8_t) * 8);
 	memcpy(aadcode, code, sizeof(uint8_t) * 8);
 	for(uint8_t i = 0; i < sizeof(uint8_t) * 8 ; i++){
 		printf("\n$$ %x", *(uint8_t *)(aadcode + i));
 	}
-	process_t *nprocess = (process_t *) kmalloc_a(sizeof(process_t));
+	process_t *nprocess = (process_t *) kmalloc(sizeof(process_t));
 	memset(nprocess, 0, sizeof(process_t));
 	printf("\nKernelProcess cr3 %x", kernelProcess.cr3);
 	printf("\nNew Process %x", nprocess);
 	printf("\nOther main %x", aadcode);
 	createTask(nprocess, (uint32_t *) aadcode, NULL, 0, kernelProcess.cr3);
-	process_t *nprocess2 = (process_t *) kmalloc_a(sizeof(process_t));
+	process_t *nprocess2 = (process_t *) kmalloc(sizeof(process_t));
 	memset(nprocess2, 0, sizeof(process_t));
 	printf("\nNew Process %x", nprocess2);
 	createTask(nprocess2, otherMainWhile, NULL, 0, kernelProcess.cr3);
-	process_t *nprocess3 = (process_t *) kmalloc_a(sizeof(process_t));
+	process_t *nprocess3 = (process_t *) kmalloc(sizeof(process_t));
 	memset(nprocess3, 0, sizeof(process_t));
 	printf("\nNew Process %x", nprocess3);
 	//page_directory_t *newDirectory = create_page_directory();

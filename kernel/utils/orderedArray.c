@@ -11,7 +11,7 @@ bool standard_lessthan_predicate(uintptr_t a, uintptr_t b){
 
 ordered_array_t create_ordered_array(uint32_t max_size, lessthan_predicate_t less_than){
 	ordered_array_t to_ret;
-	to_ret.array = (void *)kmalloc_dumb(max_size * sizeof(uintptr_t));
+	to_ret.array = (void *)kmalloc(max_size * sizeof(uintptr_t));
 	memset(to_ret.array, 0, max_size * sizeof(uintptr_t));
 	to_ret.size = 0;
 	to_ret.max_size = max_size;

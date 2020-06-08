@@ -40,11 +40,11 @@ void switchSchedulerState(){
 bool createTask(process_t *task, void (*main)(), uint32_t stack_bottom, uint32_t stack_size, uint32_t pagedir){
 	printf("\nNew Process");
 	if(stack_bottom == NULL){
-		stack_bottom = (uint32_t) kmalloc_a(0x1000);
+		stack_bottom = (uint32_t) kmalloc(0x1000);
 		stack_size = 0x1000;
 		printf("\nAsigned Stack: %x", stack_bottom);
 	}
-	uint32_t nKesp = (uint32_t) kmalloc_a(0x1000);
+	uint32_t nKesp = (uint32_t) kmalloc(0x1000);
 	memset((uint32_t *) nKesp, 0, 0x1000);
 	printf("\nKesp: %x", nKesp);
 	task->identifier = nextIdentifier;

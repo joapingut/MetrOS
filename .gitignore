@@ -12,3 +12,5 @@ target-triplet-to-arch.sh
 *.o
 .vs
 .vscode
+kernel.sym
+qemu.log
