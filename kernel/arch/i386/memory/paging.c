@@ -12,15 +12,11 @@
 uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir);
 uint32_t loadModulesFromGrub(multiboot_info_t *mbi);
 page_table_t* get_table_by_self_directory(page_directory_t *dir);
-//void alloc_frame_int(page_t *page, bool is_kernel, bool is_writeable, bool is_accessed, bool is_dirty, bool map_frame, uint32_t frameAddr);
 void switch_4kb_pagination(uint32_t phy);
 void refresh_page(uint32_t address);
 
 page_directory_t *current_page_directory;
-uint32_t next_freeAddress; // First 4MB (first page) reserved
-uint32_t next_virtualFreeAddress;
 uint32_t modules_firstAddress;
-
 
 bool starting = true;
 
@@ -30,15 +26,13 @@ void paging_install(multiboot_info_t *mbi){
 	// Primero creamos un nuevo directory para la paginación que además será el del kernel
 	// Obtenemos un bloque de memoria libre (4kb) que es el tamaño de un directorio.
 	uint32_t phy;
-	uint32_t *newPD = kmalloc_ap(sizeof(page_directory_t), &phy);
+	uint32_t *newPD = kdmalloc_ap(sizeof(page_directory_t), &phy);
 	// Limpiamos el contenido de la memoria
 	memset(newPD, 0, sizeof(page_directory_t));
 	//El nuevo directorio será el reservado para el kernel
 	kernel_directory = (page_directory_t *) newPD;
-	//Mapeamos la ultima pagina del directorio a si mismo
-	//newPD[1023] = phy | 0x63;
 	// Para evitar reclamar memoria que ya está ocupada iniciamos las paginas del kernel en el directorio
-	uint32_t kernel_space_end = next_virtualFreeAddress;
+	uint32_t kernel_space_end = ((uint32_t) newPD) + sizeof(page_directory_t);
 	printf("\nTo install %x : %x", KERNEL_VIRTUAL_BASE, kernel_space_end);
 	for(uint32_t i = KERNEL_VIRTUAL_BASE; i <= kernel_space_end; i += PAGE_TAM){
 		page_t *pg = get_page(i, 1, kernel_directory);
@@ -46,17 +40,16 @@ void paging_install(multiboot_info_t *mbi){
 		alloc_frame_int(pg, true, true, true, true, true, i - KERNEL_VIRTUAL_BASE);
 	}
 	printf("\nkernel installed");
-	printf("\nRecursive: %x at %x", newPD, phy);
-	//kernel_directory->tables[1023] = (page_table_t *) ((uint32_t)phy | 0x63);
+	printf("\nPage directory at: %x at %x", newPD, phy);
 
 	starting = false;
-	if(modules_firstAddress != NULL){
+	/*if(modules_firstAddress != NULL){
 		uint32_t initrd = loadModulesFromGrub(mbi);
 		initrd_addr = (uint8_t *)initrd;
 		printf("\nInitrd module load on 0x%x", initrd);
 	}else{
 		initrd_addr = NULL;
-	}
+	}*/
 	//Registramos el handler para la paginacion
 	register_isrs_handler(14, paging_handler);
 	//Cambiamos al modo 4KB con el nuevo directorio
@@ -124,7 +117,7 @@ page_t *get_page(uint32_t address, int make, page_directory_t *dir){
 		if (!table_exist) {
 			// Obtenemos un bloque (4kb) para alojar una nueva tabla de páginas
 			uint32_t pt_phy;
-			page_table = (page_table_t *) kmalloc_ap(sizeof(page_table_t), &pt_phy);
+			page_table = (page_table_t *) kdmalloc_ap(sizeof(page_table_t), &pt_phy); // Reemplazar con una gestion real
 			// Limpiamos el area que nos han dado
 			memset((uint32_t *) page_table, 0, sizeof(page_table_t));
 			dir->physical[table_idx].frame = pt_phy >> 12;
@@ -192,7 +185,7 @@ uintptr_t to_physical_addr(uint32_t virtual, page_directory_t *dir){
 	return NULL;
 }
 
-uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
+uint32_t loadModulesFromGrub(multiboot_info_t *mbi){/*
 	uint32_t initrd_location = *((uint32_t*)mbi->mods_addr);
 	uint32_t initrd_end = *(uint32_t*)(mbi->mods_addr+4);
 	uint32_t initrd_frame = initrd_location & 0xFFFFF000;
@@ -243,14 +236,14 @@ uint32_t loadModulesFromGrub(multiboot_info_t *mbi){
 	for(int i= 0; i < 0x20; i++){
 		printf("0x%x ", *((uint8_t *) (module_virtualAddr + i)));
 	}
-	printf("\nInitf: 0x%x\n", initrd_frame);
-	return module_virtualAddr;
+	printf("\nInitf: 0x%x\n", initrd_frame);*/
+	return NULL;
 }
 
 
 
 page_directory_t * create_page_directory(){
-	page_directory_t *newPD = (page_directory_t *)kmalloc_dumb(sizeof(page_directory_t));
+	page_directory_t *newPD = (page_directory_t *)kdmalloc(sizeof(page_directory_t));
 	memset(newPD, 0, sizeof(page_directory_t));
 	for(int i = KERNEL_PAGE; i < 1024; i++){
 		newPD->tables[i] = kernel_directory->tables[i];

@@ -20,5 +20,9 @@ void syscalls_install(){
 }
 
 void syscalls_handler(irt_regs *r){
-	printf("\nThis is syscall handler 0x%x" + r->eax);
+	uint32_t code = r->eax;
+	printf("\nThis is syscall handler 0x%x", code);
+	if (code == 69){
+		HALT();
+	}
 }

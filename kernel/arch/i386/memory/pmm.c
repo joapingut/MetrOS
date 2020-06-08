@@ -10,32 +10,32 @@ uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory);
 
 uint32_t first_free_frame_index();
 
-static uint32_t max_num_frames; //Max number of frames for installed memory
+static uint32_t max_frames = NULL; //Max number of frames for installed memory
 static uint32_t *frames_Array; //Pointer to array with the frames status (0 FREE, 1 USED)
 
 void pmm_install(multiboot_info_t *mbi) {
-    /***First create the bitmap***/
-	//Leemos la cabecera que nos ha pasado GRUB para sacar el tamaño
-	uint32_t memoryTam = getMemoryAmountFromGrub(mbi, false);
-	max_num_frames = memoryTam / PAGE_TAM;
+	// Leemos la cabecera que nos ha pasado GRUB para sacar el tamaño
+	uint32_t mem_tam = getMemoryAmountFromGrub(mbi, false);
+	max_frames = mem_tam / PAGE_TAM;
 	//Direccion para el bitmap despues del kernel
-	next_freeAddress = (uint32_t)((((uint32_t) &__KERNEL_END) + 4) - KERNEL_VIRTUAL_BASE);
-	next_virtualFreeAddress =  (uint32_t)(((uint32_t) &__KERNEL_END) + 4);
-	printf("\n%x : %x", next_freeAddress, next_virtualFreeAddress);
-	//Obtenemos un array para el bitmap
-	uint32_t framesArray_tam = INDEX_FROM_BIT(max_num_frames);
-	if(framesArray_tam % 32 != 0){
-		framesArray_tam += 1;
+	uint32_t next_v_addr = (uint32_t)(((uint32_t) &__KERNEL_END) + 4);
+	frames_Array = next_v_addr;
+	//Obtenemos el tamaño del array
+	uint32_t array_tam = INDEX_FROM_BIT(max_frames);
+	if(array_tam % 32 != 0){
+		array_tam += 1;
 	}
-	frames_Array = (uint32_t *)kmalloc_dumb(sizeof(uint32_t) * framesArray_tam);
 	//Limpiamos el contenido de la memoria
-	memset(frames_Array, 0, (sizeof(uint32_t) * framesArray_tam));
+	memset(frames_Array, 0, (sizeof(uint32_t) * array_tam));
+	// Iniciamos el kd
+	kdmalloc_init(next_v_addr, KERNEL_VIRTUAL_BASE);
+	// Le pedimos una direccion, esta garantizado que reserva el espacio del array
+	uint32_t array_reserved = (uint32_t *) kdmalloc (sizeof(uint32_t) * array_tam);
+	printf("\nFrames Array: %x : %x\n", frames_Array, array_reserved);
 	//Leemos la cabecera que nos ha pasado GRUB de nuevo para marcar los lugares reservados
 	getMemoryAmountFromGrub(mbi, true);
-	//bloqueamos el frame 0, no se puede dar a nadie.
-	//set_frame(0);
-	printf("\nMax num frames: %d; TAM: %d bytes\n", max_num_frames, memoryTam);
-	if(max_num_frames <= 4){
+	printf("\nMax num frames: %d; TAM: %d bytes\n", max_frames, mem_tam);
+	if(max_frames <= 4){
 		PANIC("INSTALLED MEMORY BELOW 16MB");
 	}
 }
@@ -108,7 +108,7 @@ bool test_frame(uint32_t frame_addr){
 // Static function to find the first free frame.
 uint32_t first_free_frame_index(){
 	uint32_t i, j;
-	for (i = 0; i < INDEX_FROM_BIT(max_num_frames); i++){
+	for (i = 0; i < INDEX_FROM_BIT(max_frames); i++){
 		if (frames_Array[i] != 0xFFFFFFFF){ // nothing free, exit early.
 			// at least one bit is free here.
 			for (j = 0; j < 32; j++){
@@ -162,7 +162,7 @@ uint32_t getMemoryAmountFromGrub(multiboot_info_t *mbi, bool setMemory){
 
 uint32_t memory_used(){
 	uint32_t i, j, used = 0;
-	for (i = 0; i < INDEX_FROM_BIT(max_num_frames); i++){
+	for (i = 0; i < INDEX_FROM_BIT(max_frames); i++){
 		if (frames_Array[i] == 0x0){
 			continue;
 		}
